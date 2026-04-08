@@ -161,8 +161,10 @@ class AppConfig:
 ### Public interface
 
 ```python
-def load_config(path: str) -> AppConfig: ...
+def load_config(path: str = "config.yaml") -> AppConfig: ...
 ```
+
+Default path is `"config.yaml"` (relative to the project `WorkingDirectory`). Callers can pass an explicit path for testing or alternate deployments.
 
 ### Implementation steps
 
@@ -195,12 +197,14 @@ Custom builder derives `images_dir`, `log_file`, and `checkin_log_file` from `ba
 
 ### Validation
 
-Required secrets (validated after construction):
-- `api.openrouter_api_key`
-- `alerts.pushover_api_key`
-- `alerts.pushover_user_key`
+Required secrets — exactly these three, validated after construction:
+- `api.openrouter_api_key` — OpenRouter API access; system cannot assess frames without it
+- `alerts.pushover_api_key` — Pushover application key; system cannot send alerts without it
+- `alerts.pushover_user_key` — Mom's Pushover user key; system cannot reach Mom without it
 
-All three are reported in a single `ValueError` if multiple are missing, rather than failing one-at-a-time.
+`alerts.pushover_builder_user_key` and `healthchecks.mom_pushover_user_key` are NOT validated — they are optional operational fields that degrade gracefully when absent.
+
+All missing required secrets are reported in a single `ValueError` rather than failing one-at-a-time.
 
 ---
 
