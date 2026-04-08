@@ -1,0 +1,171 @@
+# grandma-watcher configuration
+# Copy this file to config.yaml and fill in your API keys before running.
+# config.yaml is gitignored - never commit real secrets.
+
+# --- API Configuration ----------------------------------------------------------
+api:
+  # Active provider: openrouter | hyperbolic | anthropic
+  provider: "openrouter"
+
+  # Model to use for safety assessment
+  model: "qwen/qwen3-vl-32b-instruct"
+
+  # OpenRouter API key - get at https://openrouter.ai/keys
+  openrouter_api_key: ""
+
+  # Hyperbolic API key - used as fallback provider
+  # Get at https://app.hyperbolic.xyz/settings
+  hyperbolic_api_key: ""
+
+  # Anthropic API key - reserved for future use
+  anthropic_api_key: ""
+
+  # HTTP connection timeout (seconds)
+  timeout_connect_seconds: 10
+
+  # HTTP read timeout (seconds)
+  timeout_read_seconds: 30
+
+  # Fallback provider when primary fails consecutively
+  fallback_provider: "hyperbolic"
+  fallback_model: "qwen/qwen2.5-vl-72b-instruct"
+
+  # Switch to fallback after this many consecutive failures (~2.5 min at 30s intervals)
+  consecutive_failure_threshold: 5
+
+# --- Monitoring -----------------------------------------------------------------
+monitor:
+  # Seconds between safety assessments
+  interval_seconds: 30
+
+  # Camera snapshot resolution (must match go2rtc output)
+  image_width: 960
+  image_height: 540
+
+  # Default alert silence duration in minutes (monitoring continues during silence)
+  silence_duration_minutes: 30
+
+# --- Healthchecks.io ------------------------------------------------------------
+# Silent system health monitoring. Both URLs are separate Healthchecks.io checks.
+# Leave blank to disable. See PRD §5.2 for details.
+healthchecks:
+  # Pinged by monitor.py each cycle - detects application-level failure
+  app_ping_url: ""
+
+  # Pinged by cron every 5 min - detects OS/Pi-level failure
+  system_ping_url: ""
+
+  # Minutes of missed app pings before Mom is alerted directly (builder is always first)
+  sustained_outage_minutes: 30
+
+  # Mom's Pushover user key for sustained outage alerts (optional)
+  mom_pushover_user_key: ""
+
+# --- Alerts ---------------------------------------------------------------------
+alerts:
+  # Pushover application API key - get at https://pushover.net/apps
+  pushover_api_key: ""
+
+  # Mom's Pushover user key - get at https://pushover.net (her account)
+  pushover_user_key: ""
+
+  # Builder's Pushover user key - for system health alerts (optional)
+  pushover_builder_user_key: ""
+
+  # Minutes between same-type alerts (medium confidence). High confidence: no cooldown.
+  cooldown_minutes: 5
+
+  # Sliding window size for medium/low confidence counters
+  window_size: 5
+
+  # N-of-window medium-unsafe frames that trigger a Pushover alert
+  medium_unsafe_window_threshold: 2
+
+  # N-of-window low-confidence frames that trigger a soft Pushover alert
+  low_unsafe_window_threshold: 3
+
+  # Minutes between soft low-confidence alerts
+  low_confidence_cooldown_minutes: 60
+
+  # Alert escalation: behavior undecided - discuss with Mom before enabling.
+  # See PRD §6.4 for open question.
+  # escalation:
+  #   enabled: false
+  #   no_response_minutes: 15
+  #   escalate_to_builder: true
+
+# --- Dataset --------------------------------------------------------------------
+dataset:
+  # Absolute path to dataset root on the Pi
+  base_dir: "/home/pi/eldercare/dataset"
+
+  # Sub-paths are derived from base_dir if left blank
+  images_dir: ""        # defaults to <base_dir>/images
+  log_file: ""          # defaults to <base_dir>/log.jsonl
+  checkin_log_file: ""  # defaults to <base_dir>/checkins.jsonl
+
+  # Warn when dataset disk usage exceeds this (GB)
+  max_disk_gb: 50
+
+  retention:
+    # Alert-triggering frames: keep forever (fine-tuning value)
+    alert_frames: "forever"
+
+    # Medium/low confidence frames (days)
+    uncertain_frames_days: 30
+
+    # 1-in-20 random safe frames kept as negative training examples (days)
+    safe_sample_frames_days: 30
+
+    # All other safe frames (days)
+    safe_unsample_frames_days: 7
+
+# --- Streaming (go2rtc) ---------------------------------------------------------
+# Camera source and stream config live in go2rtc.yaml - not here.
+stream:
+  # go2rtc HTTP API port
+  go2rtc_api_port: 1984
+
+  # Snapshot URL used by monitor.py to fetch frames from go2rtc
+  snapshot_url: "http://localhost:1984/api/frame.jpeg?src=grandma"
+
+  # Stream name as defined in go2rtc.yaml
+  stream_name: "grandma"
+
+# --- Web Dashboard --------------------------------------------------------------
+web:
+  # Flask port for the dashboard
+  port: 8080
+
+  # Max frames shown in the gallery
+  gallery_max_items: 50
+
+# --- Cloudflare Tunnel ----------------------------------------------------------
+# Auth is handled by Cloudflare Access + Google OAuth (configured in Cloudflare dashboard).
+cloudflare:
+  tunnel_token: ""
+
+# --- Tailscale ------------------------------------------------------------------
+tailscale:
+  # Set to false if Tailscale is not installed (disables the /talk audio route)
+  enabled: true
+
+# --- Sensors (Phase 2 - all disabled by default) --------------------------------
+sensors:
+  load_cells:
+    enabled: false
+    node_url: "http://loadcells.local:5000/sensors"
+    poll_interval_seconds: 5
+  vitals:
+    enabled: false
+    node_url: "http://vitals.local:5000/sensors"
+    poll_interval_seconds: 5
+
+# --- Audio ----------------------------------------------------------------------
+audio:
+  # Play a chime before Mom's voice comes through (prevents startling grandma)
+  chime_before_talk: true
+
+  # Path to chime audio file, relative to project WorkingDirectory
+  # WorkingDirectory is set in setup/systemd/monitor.service
+  chime_file: "static/chime.mp3"
