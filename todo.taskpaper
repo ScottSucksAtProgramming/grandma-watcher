@@ -2,7 +2,7 @@ grandma-watcher:
 
 	Prep:
 		- Define domain types in models.py (AssessmentResult, Alert, SensorSnapshot) @done
-		- Write full config.yaml schema with defaults and comments @na
+		- Write full config.yaml schema with defaults and comments @done
 		- Set up pyproject.toml with ruff, black, and pytest configured @na
 		- Create Makefile with single pre-merge check command @na
 		- Create tests/ scaffold with conftest.py and a fixture JPEG for mocking the camera @na

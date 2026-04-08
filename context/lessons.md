@@ -18,3 +18,4 @@ updated: 2026-04-07
 2026-04-08: Prep task ordering matters — pyproject.toml (pythonpath config) must exist before any test can be written, even to fail correctly; bootstrap it before models.py, not after.
 2026-04-08: AlertType.INFO is needed alongside SYSTEM for informational Mom notifications (e.g. silence-resume) — overloading SYSTEM conflates builder system-health alerts with patient-state notifications.
 2026-04-08: Codex workflow: design spec → Opus spec review → implementation plan → Opus plan review → Codex brief → verify output. Two Opus review passes caught 6 spec issues and 1 plan issue before implementation.
+2026-04-08: TDD plan import sequencing — test files that import not-yet-implemented symbols must add imports incrementally per task, or the red phase fails for the wrong reason (ImportError vs missing implementation).
