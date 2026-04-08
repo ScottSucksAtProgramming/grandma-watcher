@@ -1,1 +1,21 @@
+# Local worktrees
 .worktrees/
+
+# Real config (contains secrets — never commit)
+config.yaml
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# macOS
+.DS_Store
+
+# Dataset runtime data (large; Pi-local only)
+dataset/images/
+dataset/log.jsonl
+dataset/checkins.jsonl

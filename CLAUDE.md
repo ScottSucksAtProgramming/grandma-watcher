@@ -8,9 +8,11 @@ Passive, AI-powered 24/7 monitoring system for a 97-year-old bed-bound patient w
 
 ```
 grandma-watcher/
+  .gitignore
   CLAUDE.md
   INDEX.md
   PRD.md
+  config.py
   models.py
   protocols.py
   pyproject.toml
@@ -26,6 +28,7 @@ grandma-watcher/
   requirements.txt
   todo.taskpaper
   tests/
+    fixtures/
     test_models.py
     test_protocols.py
   setup/
