@@ -202,8 +202,49 @@ def _build_sensors(raw: dict[str, Any]) -> SensorsConfig:
     load_cells_raw = section.get("load_cells", {}) or {}
     vitals_raw = section.get("vitals", {}) or {}
     return SensorsConfig(
-        load_cells=_build_section(
-            {"load_cells": load_cells_raw}, "load_cells", SensorNodeConfig
-        ),
+        load_cells=_build_section({"load_cells": load_cells_raw}, "load_cells", SensorNodeConfig),
         vitals=_build_section({"vitals": vitals_raw}, "vitals", SensorNodeConfig),
     )
+
+
+_REQUIRED_SECTIONS = ("api", "monitor", "alerts")
+
+_REQUIRED_SECRETS: list[tuple[str, Any]] = [
+    ("api.openrouter_api_key", lambda c: c.api.openrouter_api_key),
+    ("alerts.pushover_api_key", lambda c: c.alerts.pushover_api_key),
+    ("alerts.pushover_user_key", lambda c: c.alerts.pushover_user_key),
+]
+
+
+def load_config(path: str = "config.yaml") -> AppConfig:
+    """Load and validate configuration from a YAML file."""
+    with open(path) as f:
+        raw: dict[str, Any] = yaml.safe_load(f) or {}
+
+    for key in raw:
+        if key not in _KNOWN_TOP_LEVEL_KEYS:
+            logger.warning("Unknown config key: %s", key)
+
+    for section in _REQUIRED_SECTIONS:
+        if section not in raw:
+            raise ValueError(f"Missing required config section: {section}")
+
+    config = AppConfig(
+        api=_build_section(raw, "api", ApiConfig),
+        monitor=_build_section(raw, "monitor", MonitorConfig),
+        alerts=_build_section(raw, "alerts", AlertsConfig),
+        healthchecks=_build_section(raw, "healthchecks", HealthchecksConfig),
+        dataset=_build_dataset(raw),
+        stream=_build_section(raw, "stream", StreamConfig),
+        web=_build_section(raw, "web", WebConfig),
+        cloudflare=_build_section(raw, "cloudflare", CloudflareConfig),
+        tailscale=_build_section(raw, "tailscale", TailscaleConfig),
+        sensors=_build_sensors(raw),
+        audio=_build_section(raw, "audio", AudioConfig),
+    )
+
+    missing = [name for name, getter in _REQUIRED_SECRETS if not getter(config)]
+    if missing:
+        raise ValueError(f"Missing required config keys: {', '.join(missing)}")
+
+    return config
