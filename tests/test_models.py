@@ -1,3 +1,5 @@
+import dataclasses
+
 import pytest
 
 from models import (
@@ -69,7 +71,7 @@ def test_assessment_result_is_frozen():
         reason="All clear.",
         patient_location=PatientLocation.IN_BED,
     )
-    with pytest.raises(Exception):
+    with pytest.raises(dataclasses.FrozenInstanceError):
         result.safe = False  # type: ignore[misc]
 
 
@@ -101,7 +103,7 @@ def test_alert_is_frozen():
         priority=AlertPriority.NORMAL,
         message="Grandma is back in bed — monitoring resumed.",
     )
-    with pytest.raises(Exception):
+    with pytest.raises(dataclasses.FrozenInstanceError):
         alert.message = "different"  # type: ignore[misc]
 
 
@@ -119,5 +121,5 @@ def test_sensor_snapshot_phase2_enabled():
 
 def test_sensor_snapshot_is_frozen():
     snapshot = SensorSnapshot(load_cells_enabled=False, vitals_enabled=False)
-    with pytest.raises(Exception):
+    with pytest.raises(dataclasses.FrozenInstanceError):
         snapshot.load_cells_enabled = True  # type: ignore[misc]
