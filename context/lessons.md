@@ -27,3 +27,4 @@ updated: 2026-04-07
 2026-04-09: exc_info=True on logger calls outside an except block is a silent no-op — sys.exc_info() returns (None, None, None) when no exception is being handled; only use exc_info=True inside except blocks.
 2026-04-09: Alert decision functions should raise ValueError on unknown enum values rather than silently returning None — silent fallthrough is the worst failure mode for safety-critical code; a crash is far preferable.
 2026-04-09: CooldownTimer.start() must not extend an active cooldown — extending lets repeated unsafe frames push expiry forward indefinitely; idempotent no-op is the safe behavior.
+2026-04-09: Pushover HTTP API requires form-encoded POST (`data=` not `json=`); priority 2 (emergency) requires `retry` and `expire` params — omit them entirely for lower priorities or the API rejects the request.
