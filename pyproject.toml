@@ -17,3 +17,4 @@ select = ["E", "F", "W", "I", "B", "UP"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["B011"]
+"prompt_builder.py" = ["E501"]  # _BASE_PROMPT contains verbatim prompt text that must not be wrapped

@@ -10,7 +10,7 @@ grandma-watcher:
 
 	Milestone 1 - Core Monitor Loop:
 		- Implement models.py dataclasses @done
-		- Implement prompt_builder.py (builds VLM prompt from config + sensor snapshot) @na
+		- Implement prompt_builder.py (builds VLM prompt from config + sensor snapshot) @done
 		- Implement VLM response parser (raw JSON → AssessmentResult; malformed → safe/low fail-safe) @na
 		- Implement OpenRouterProvider satisfying VLMProvider protocol @na
 		- Implement alert decision matrix in alert.py (PRD §6.3 table: safe/confidence → action) @na
