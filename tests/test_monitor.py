@@ -52,8 +52,8 @@ def _state(config):
         medium_cooldown=CooldownTimer(config.alerts.cooldown_minutes * 60),
         low_cooldown=CooldownTimer(config.alerts.low_confidence_cooldown_minutes * 60),
         location_state=PatientLocationStateMachine(
-            out_of_bed_frames_to_silence=3,
-            in_bed_frames_to_resume=2,
+            out_of_bed_frames_to_silence=config.alerts.out_of_bed_frames_to_silence,
+            in_bed_frames_to_resume=config.alerts.in_bed_frames_to_resume,
         ),
     )
 
@@ -274,6 +274,155 @@ def test_run_cycle_auto_silence_flushes_window_and_suppresses_medium_alert(
     assert state["location_state"].auto_silenced is True
 
 
+def test_run_forever_uses_config_out_of_bed_silence_thresholds(sample_config):
+    """run_forever must read out_of_bed_frames_to_silence and in_bed_frames_to_resume from config."""
+    import monitor
+    from monitor import run_forever
+
+    class StopLoop(BaseException):
+        pass
+
+    machine_kwargs = {}
+    original_machine = monitor.PatientLocationStateMachine
+
+    def capturing_machine(**kwargs):
+        machine_kwargs.update(kwargs)
+        raise StopLoop()
+
+    monitor.PatientLocationStateMachine = capturing_machine
+    try:
+        with pytest.raises(StopLoop):
+            run_forever(sample_config, provider=object(), alert_channel=object())
+    finally:
+        monitor.PatientLocationStateMachine = original_machine
+
+    assert machine_kwargs["out_of_bed_frames_to_silence"] == sample_config.alerts.out_of_bed_frames_to_silence
+    assert machine_kwargs["in_bed_frames_to_resume"] == sample_config.alerts.in_bed_frames_to_resume
+
+
+def test_run_forever_resets_failure_counter_after_successful_cycle(sample_config, caplog):
+    """Success resets the counter: (threshold-1) failures → success → (threshold-1) more → no builder alert."""
+    import monitor
+    from monitor import run_forever
+
+    class StopLoop(BaseException):
+        pass
+
+    threshold = sample_config.api.consecutive_failure_threshold
+    calls = {"n": 0}
+
+    def fake_run_cycle(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] < threshold:
+            raise RuntimeError("first wave, below threshold")
+        if calls["n"] == threshold:
+            return  # success — resets counter
+        if calls["n"] < threshold * 2:
+            raise RuntimeError("second wave, below threshold again")
+        raise StopLoop()
+
+    builder_channel = _AlertChannelFake()
+
+    original_run_cycle = monitor.run_cycle
+    original_sleep = monitor.time.sleep
+    monitor.run_cycle = fake_run_cycle
+    monitor.time.sleep = lambda _: None
+    try:
+        with caplog.at_level(logging.ERROR, logger="monitor"):
+            with pytest.raises(StopLoop):
+                run_forever(
+                    sample_config,
+                    provider=object(),
+                    alert_channel=object(),
+                    builder_channel=builder_channel,
+                )
+    finally:
+        monitor.run_cycle = original_run_cycle
+        monitor.time.sleep = original_sleep
+
+    # Neither wave reached threshold alone, so no builder alert should fire
+    assert len(builder_channel.alerts) == 0
+
+
+def test_run_forever_sends_builder_alert_when_consecutive_failure_threshold_reached(sample_config, caplog):
+    """A SYSTEM alert is sent to builder_channel when consecutive_failure_threshold is reached."""
+    import monitor
+    from monitor import run_forever
+
+    class StopLoop(BaseException):
+        pass
+
+    threshold = sample_config.api.consecutive_failure_threshold
+    calls = {"n": 0}
+
+    def fake_run_cycle(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] <= threshold:
+            raise RuntimeError("api error")
+        raise StopLoop()
+
+    builder_channel = _AlertChannelFake()
+
+    original_run_cycle = monitor.run_cycle
+    original_sleep = monitor.time.sleep
+    monitor.run_cycle = fake_run_cycle
+    monitor.time.sleep = lambda _: None
+    try:
+        with caplog.at_level(logging.ERROR, logger="monitor"):
+            with pytest.raises(StopLoop):
+                run_forever(
+                    sample_config,
+                    provider=object(),
+                    alert_channel=object(),
+                    builder_channel=builder_channel,
+                )
+    finally:
+        monitor.run_cycle = original_run_cycle
+        monitor.time.sleep = original_sleep
+
+    assert len(builder_channel.alerts) == 1
+    assert builder_channel.alerts[0].alert_type == AlertType.SYSTEM
+
+
+def test_run_forever_does_not_repeat_builder_alert_on_subsequent_failures(sample_config, caplog):
+    """Builder alert fires exactly once at the threshold, not on every subsequent failure."""
+    import monitor
+    from monitor import run_forever
+
+    class StopLoop(BaseException):
+        pass
+
+    threshold = sample_config.api.consecutive_failure_threshold
+    calls = {"n": 0}
+
+    def fake_run_cycle(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] <= threshold + 3:
+            raise RuntimeError("api error")
+        raise StopLoop()
+
+    builder_channel = _AlertChannelFake()
+
+    original_run_cycle = monitor.run_cycle
+    original_sleep = monitor.time.sleep
+    monitor.run_cycle = fake_run_cycle
+    monitor.time.sleep = lambda _: None
+    try:
+        with caplog.at_level(logging.ERROR, logger="monitor"):
+            with pytest.raises(StopLoop):
+                run_forever(
+                    sample_config,
+                    provider=object(),
+                    alert_channel=object(),
+                    builder_channel=builder_channel,
+                )
+    finally:
+        monitor.run_cycle = original_run_cycle
+        monitor.time.sleep = original_sleep
+
+    assert len(builder_channel.alerts) == 1
+
+
 def test_run_forever_catches_cycle_exception_and_continues(sample_config, caplog):
     from monitor import run_forever
 
@@ -307,3 +456,56 @@ def test_run_forever_catches_cycle_exception_and_continues(sample_config, caplog
     assert calls["run_cycle"] == 2
     assert calls["sleep"] == [config.monitor.interval_seconds]
     assert any("Monitoring cycle failed" in record.message for record in caplog.records)
+
+
+def test_main_selects_lmstudio_provider_when_configured(tmp_path):
+    """main() must instantiate LMStudioProvider when config.api.provider == 'lmstudio'."""
+    import monitor
+    from config import load_config
+
+    cfg_path = tmp_path / "config.yaml"
+    cfg_path.write_text(
+        """
+api:
+  provider: lmstudio
+  model: "qwen/qwen3-vl-32b-instruct"
+  openrouter_api_key: ""
+  lmstudio_base_url: "http://localhost:1234"
+  lmstudio_model: "qwen3-vlm-7b"
+monitor:
+  interval_seconds: 30
+  image_width: 960
+  image_height: 540
+  silence_duration_minutes: 30
+alerts:
+  pushover_api_key: "test-key-app"
+  pushover_user_key: "test-key-user"
+""",
+        encoding="utf-8",
+    )
+
+    class StopLoop(BaseException):
+        pass
+
+    provider_types = []
+
+    original_run_forever = monitor.run_forever
+    original_load_config = monitor.load_config
+
+    def fake_load_config(*args, **kwargs):
+        return load_config(str(cfg_path))
+
+    def fake_run_forever(config, provider, alert_channel, **kwargs):
+        provider_types.append(type(provider).__name__)
+        raise StopLoop()
+
+    monitor.load_config = fake_load_config
+    monitor.run_forever = fake_run_forever
+    try:
+        with pytest.raises(StopLoop):
+            monitor.main()
+    finally:
+        monitor.load_config = original_load_config
+        monitor.run_forever = original_run_forever
+
+    assert provider_types == ["LMStudioProvider"]

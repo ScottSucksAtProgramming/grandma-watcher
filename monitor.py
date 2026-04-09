@@ -28,6 +28,7 @@ from models import (
     DatasetEntry,
     SensorSnapshot,
 )
+from lmstudio_provider import LMStudioProvider
 from openrouter_provider import OpenRouterProvider
 from prompt_builder import build_prompt
 from protocols import AlertChannel, VLMProvider
@@ -144,15 +145,24 @@ def run_cycle(
     )
 
 
-def run_forever(config: AppConfig, provider: VLMProvider, alert_channel: AlertChannel) -> None:
+def run_forever(
+    config: AppConfig,
+    provider: VLMProvider,
+    alert_channel: AlertChannel,
+    *,
+    builder_channel: AlertChannel | None = None,
+) -> None:
     """Run the monitor loop indefinitely, keeping per-loop state in memory."""
     window_counter = SlidingWindowCounter(config.alerts.window_size)
     medium_cooldown = CooldownTimer(config.alerts.cooldown_minutes * 60)
     low_cooldown = CooldownTimer(config.alerts.low_confidence_cooldown_minutes * 60)
     location_state = PatientLocationStateMachine(
-        out_of_bed_frames_to_silence=3,
-        in_bed_frames_to_resume=2,
+        out_of_bed_frames_to_silence=config.alerts.out_of_bed_frames_to_silence,
+        in_bed_frames_to_resume=config.alerts.in_bed_frames_to_resume,
     )
+
+    consecutive_failures = 0
+    builder_alerted = False
 
     while True:
         try:
@@ -165,15 +175,37 @@ def run_forever(config: AppConfig, provider: VLMProvider, alert_channel: AlertCh
                 low_cooldown=low_cooldown,
                 location_state=location_state,
             )
+            consecutive_failures = 0
+            builder_alerted = False
         except Exception:
             logger.exception("Monitoring cycle failed")
+            consecutive_failures += 1
+            if (
+                consecutive_failures >= config.api.consecutive_failure_threshold
+                and not builder_alerted
+                and builder_channel is not None
+            ):
+                builder_channel.send(
+                    Alert(
+                        alert_type=AlertType.SYSTEM,
+                        priority=AlertPriority.NORMAL,
+                        message=(
+                            f"Monitor has failed {consecutive_failures} consecutive cycles. "
+                            "Check API connectivity and logs."
+                        ),
+                    )
+                )
+                builder_alerted = True
         time.sleep(config.monitor.interval_seconds)
 
 
 def main() -> int:
     """Load config and start the monitor loop."""
     config = load_config()
-    provider = OpenRouterProvider(config.api)
+    if config.api.provider == "lmstudio":
+        provider: VLMProvider = LMStudioProvider(config.api)
+    else:
+        provider = OpenRouterProvider(config.api)
     alert_channel = PushoverChannel(
         api_key=config.alerts.pushover_api_key,
         user_key=config.alerts.pushover_user_key,
@@ -181,7 +213,16 @@ def main() -> int:
         emergency_retry_seconds=config.alerts.pushover_emergency_retry_seconds,
         emergency_expire_seconds=config.alerts.pushover_emergency_expire_seconds,
     )
-    run_forever(config, provider, alert_channel)
+    builder_channel: AlertChannel | None = None
+    if config.alerts.pushover_builder_user_key:
+        builder_channel = PushoverChannel(
+            api_key=config.alerts.pushover_api_key,
+            user_key=config.alerts.pushover_builder_user_key,
+            high_priority=config.alerts.high_alert_pushover_priority,
+            emergency_retry_seconds=config.alerts.pushover_emergency_retry_seconds,
+            emergency_expire_seconds=config.alerts.pushover_emergency_expire_seconds,
+        )
+    run_forever(config, provider, alert_channel, builder_channel=builder_channel)
     return 0
 
 
