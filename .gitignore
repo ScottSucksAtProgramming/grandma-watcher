@@ -19,3 +19,6 @@ __pycache__/
 dataset/images/
 dataset/log.jsonl
 dataset/checkins.jsonl
+
+# AI 
+.claude/
