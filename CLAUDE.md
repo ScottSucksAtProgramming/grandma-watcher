@@ -35,6 +35,9 @@ grandma-watcher/
     fixtures/
       config_valid.yaml
       frame.jpeg
+    test_dataset.py
+    test_monitor.py
+    test_monitor_integration.py
     test_models.py
     test_protocols.py
     test_prompt_builder.py
@@ -64,8 +67,14 @@ grandma-watcher/
     superpowers/
       specs/
         2026-04-08-models-protocols-design.md
+        2026-04-09-dataset-logging-design.md
+        2026-04-09-monitor-core-loop-design.md
+        2026-04-09-monitor-integration-test-design.md
       plans/
         2026-04-08-models-protocols.md
+        2026-04-09-dataset-logging.md
+        2026-04-09-monitor-core-loop.md
+        2026-04-09-monitor-integration-test.md
   context/
     conventions.md
     dev-environment.md
@@ -101,8 +110,8 @@ After completing a task, log any corrections, preferences, patterns, or discover
 ### Recent Lessons (last 5)
 
 <!-- Claude maintains this as a quick-reference mirror of the most recent entries from context/lessons.md. -->
+2026-04-09: Full-cycle monitor integration tests should reuse the real `run_cycle(...)` and fake only the outer boundaries (frame source, provider, alert channel) — patching deeper adapters duplicates unit coverage and adds brittleness.
+2026-04-09: A one-cycle orchestrator should accept injectable boundary helpers like `fetch_frame` — that keeps monitor-loop tests narrow and deterministic without patching global network calls.
+2026-04-09: `dataclasses.asdict()` preserves Enum objects inside nested dataclasses — dataset JSONL serialization needs an explicit recursive `.value` conversion before `json.dumps()`.
 2026-04-09: Pushover HTTP API requires form-encoded POST (`data=` not `json=`); priority 2 (emergency) requires `retry` and `expire` params — omit them entirely for lower priorities.
 2026-04-09: Patch requests.Session.post (not requests.post) — instance method lookup falls through to class, so patching the class method intercepts already-constructed instances.
-2026-04-09: exc_info=True outside an except block is a silent no-op — sys.exc_info() returns (None,None,None); only use inside except blocks.
-2026-04-09: Use `type(x) is bool` (not `isinstance`) to validate VLM boolean fields — bool subclasses int in Python, so isinstance(True, int) is True.
-2026-04-09: In except clauses raising a different exception type, always use `from None` — the new exception carries all context, chaining adds noise.
