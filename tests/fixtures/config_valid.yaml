@@ -27,3 +27,6 @@ alerts:
   medium_unsafe_window_threshold: 2
   low_unsafe_window_threshold: 3
   low_confidence_cooldown_minutes: 60
+  high_alert_pushover_priority: 1
+  pushover_emergency_retry_seconds: 60
+  pushover_emergency_expire_seconds: 3600

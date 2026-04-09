@@ -134,6 +134,17 @@ def test_load_valid_config():
     assert config.alerts.pushover_api_key == "test-key-pushover-app"
 
 
+def test_alerts_config_has_high_alert_pushover_priority():
+    config = load_config(str(VALID_FIXTURE))
+    assert config.alerts.high_alert_pushover_priority == 1
+
+
+def test_alerts_config_has_emergency_retry_and_expire():
+    config = load_config(str(VALID_FIXTURE))
+    assert config.alerts.pushover_emergency_retry_seconds == 60
+    assert config.alerts.pushover_emergency_expire_seconds == 3600
+
+
 def test_missing_required_secret_raises(tmp_path):
     data = {**_MINIMAL_RAW, "api": {**_MINIMAL_RAW["api"], "openrouter_api_key": ""}}
     p = _write_config(tmp_path, data)

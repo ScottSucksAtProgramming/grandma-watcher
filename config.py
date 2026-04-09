@@ -88,6 +88,9 @@ class AlertsConfig:
     medium_unsafe_window_threshold: int = 2
     low_unsafe_window_threshold: int = 3
     low_confidence_cooldown_minutes: int = 60
+    high_alert_pushover_priority: int = 1
+    pushover_emergency_retry_seconds: int = 60
+    pushover_emergency_expire_seconds: int = 3600
 
 
 @dataclass(frozen=True)
