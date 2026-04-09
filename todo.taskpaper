@@ -12,7 +12,7 @@ grandma-watcher:
 		- Implement models.py dataclasses @done
 		- Implement prompt_builder.py (builds VLM prompt from config + sensor snapshot) @done
 		- Implement VLM response parser (raw JSON → AssessmentResult; malformed → safe/low fail-safe) @done
-		- Implement OpenRouterProvider satisfying VLMProvider protocol @na
+		- Implement OpenRouterProvider satisfying VLMProvider protocol @done
 		- Implement alert decision matrix in alert.py (PRD §6.3 table: safe/confidence → action) @na
 		- Implement alert sliding window + cooldown logic in alert.py @na
 		- Implement patient_location state machine in alert.py (auto-silence / auto-resume) @na

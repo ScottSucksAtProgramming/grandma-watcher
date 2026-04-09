@@ -23,3 +23,5 @@ updated: 2026-04-07
 2026-04-09: E501 in string literals (verbatim prompt constants) should be suppressed via per-file-ignores in pyproject.toml — never wrap prompt text to satisfy a linter; wrap the ignore instead.
 2026-04-09: Use `type(x) is bool` (not `isinstance`) to validate VLM boolean fields — bool subclasses int in Python, so isinstance(True, int) is True; only `type(x) is bool` rejects integers while accepting booleans.
 2026-04-09: In except clauses raising a different exception type, always use `from None` to suppress the exception chain — the new exception already carries all context, and chaining adds traceback noise in logs.
+2026-04-09: Patch requests.Session.post (not requests.post) when the provider stores a session at __init__ time — instance method lookup falls through to the class, so patching the class method intercepts calls on already-constructed instances.
+2026-04-09: exc_info=True on logger calls outside an except block is a silent no-op — sys.exc_info() returns (None, None, None) when no exception is being handled; only use exc_info=True inside except blocks.

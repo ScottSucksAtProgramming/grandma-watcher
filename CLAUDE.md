@@ -24,6 +24,7 @@ grandma-watcher/
   sensors.py
   prompt_builder.py
   vlm_parser.py
+  openrouter_provider.py
   dataset.py
   smoke_test.py
   go2rtc.yaml
@@ -38,6 +39,7 @@ grandma-watcher/
     test_protocols.py
     test_prompt_builder.py
     test_vlm_parser.py
+    test_openrouter_provider.py
   setup/
     install.sh
     tailscale_setup.sh
@@ -99,8 +101,8 @@ After completing a task, log any corrections, preferences, patterns, or discover
 ### Recent Lessons (last 5)
 
 <!-- Claude maintains this as a quick-reference mirror of the most recent entries from context/lessons.md. -->
-2026-04-09: E501 in string literals (verbatim prompt constants) suppressed via per-file-ignores in pyproject.toml — never wrap prompt text to satisfy a linter.
+2026-04-09: Patch requests.Session.post (not requests.post) — instance method lookup falls through to class, so patching the class method intercepts already-constructed instances.
+2026-04-09: exc_info=True outside an except block is a silent no-op — sys.exc_info() returns (None,None,None); only use inside except blocks.
 2026-04-09: Use `type(x) is bool` (not `isinstance`) to validate VLM boolean fields — bool subclasses int in Python, so isinstance(True, int) is True.
 2026-04-09: In except clauses raising a different exception type, always use `from None` — the new exception carries all context, chaining adds noise.
 2026-04-08: Codex workflow: design spec → Opus spec review → implementation plan → Opus plan review → Codex brief → verify output. Two Opus passes caught 6 spec issues and 1 plan issue before implementation.
-2026-04-08: AlertType.INFO is needed alongside SYSTEM for informational Mom notifications (silence-resume) — overloading SYSTEM conflates builder and patient-state alerts.
