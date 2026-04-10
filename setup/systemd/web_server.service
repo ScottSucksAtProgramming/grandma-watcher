@@ -1,0 +1,32 @@
+[Unit]
+Description=grandma-watcher Flask dashboard
+After=network-online.target go2rtc.service
+Wants=network-online.target
+Requires=go2rtc.service
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+
+ExecStart=/home/pi/eldercare/.venv/bin/python /home/pi/eldercare/web_server.py
+
+WorkingDirectory=/home/pi/eldercare
+
+# Restart policy
+Restart=on-failure
+RestartSec=5
+
+# Resource limits (Pi 5 8GB)
+MemoryMax=256M
+
+# Environment
+Environment=HOME=/home/pi
+
+# Logging to journald
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=grandma-web
+
+[Install]
+WantedBy=multi-user.target

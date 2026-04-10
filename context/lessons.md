@@ -9,6 +9,12 @@ updated: 2026-04-07
 
 <!-- Append dated one-liners below. When 3+ related lessons accumulate on a topic, extract into a dedicated context file. -->
 
+2026-04-10: When adding side-effectful logging to existing Flask routes, all test fixtures that hit those routes must patch the new file path — not just fixtures created for the new feature. Update the shared `client` fixture and any inline test configs at the same time.
+
+2026-04-10: Flask route tests that rely on the default `client` fixture break as soon as the route writes to disk — any route doing real I/O needs a tmp_path fixture so file paths resolve in tests.
+
+2026-04-10: JSONL in-place label update — read all lines, match by `timestamp` field, update `label`, rewrite entire file; JSONL has no partial-line update primitive.
+
 2026-04-07: go2rtc on Pi 5 requires `rpicam-vid` (not `libcamera-vid`) with `--libav-format h264` — without this flag rpicam-vid cannot write to stdout.
 2026-04-07: Together AI does not offer Qwen2.5-VL-72B on serverless endpoints; switched to OpenRouter + Qwen3-VL-32B-Instruct (~$13.50/month at 30s intervals, 960×540).
 2026-04-07: WebRTC media (UDP) cannot traverse Cloudflare Tunnel (HTTP-only); two-way audio routed via Tailscale instead — Mom needs Tailscale app for audio only.
@@ -31,4 +37,9 @@ updated: 2026-04-07
 2026-04-09: `dataclasses.asdict()` preserves Enum objects inside nested dataclasses — dataset JSONL serialization needs an explicit recursive `.value` conversion before `json.dumps()`.
 2026-04-09: A one-cycle orchestrator should accept injectable boundary helpers like `fetch_frame` — that keeps monitor-loop tests narrow and deterministic without patching global network calls.
 2026-04-09: Full-cycle monitor integration tests should reuse the real `run_cycle(...)` and fake only the outer boundaries (frame source, provider, alert channel) — patching deeper adapters duplicates unit coverage and adds brittleness.
-2026-04-10: Frontend smoke tests for the dashboard can run against a temporary Flask app seeded with fixture images and JSONL entries — that verifies gallery, modal, silence, and labeling flows without mutating tracked dataset files.
+2026-04-10: Flask app silence state must be scoped to the `create_app` closure, not a module-level global — module-level state leaks across test instances sharing the same import; closure-scoped state resets with each `create_app()` call.
+2026-04-10: When testing a route that reads a config-derived file path, use `dataclasses.replace` on the nested config dataclass to override the path to `tmp_path` — frozen dataclasses support `replace` so no monkey-patching needed.
+2026-04-10: `git stash --include-untracked` stashes untracked files into a separate stash commit, but `git stash pop` fails if those untracked files already exist (e.g. after a merge created them) — drop the stash after confirming the important tracked-file changes were restored.
+2026-04-10: When a worktree branches from a commit that predates untracked files in the main working tree, those files won't appear in the worktree; the merge back to main will fail unless they're removed first (after verifying the feature branch version is a superset).
+2026-04-10: CSS `#modal-close` overriding `min-height: auto` from a base button rule breaks the 48px tap target — close buttons need explicit `min-height: var(--tap-height)` even when styled differently from other buttons.
+2026-04-10: `flashButton()` re-enables the button internally after the delay — a `finally` block that also re-enables is dead code (idempotent but misleading); only use `finally` for re-enable when there is no `flashButton` call in both branches.

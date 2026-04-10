@@ -1,7 +1,7 @@
 # grandma-watcher — Product Requirements Document
 
-**Version:** 2.5  
-**Last Updated:** April 7, 2026  
+**Version:** 2.6
+**Last Updated:** April 10, 2026
 **Status:** Ready for Development  
 
 ---
@@ -712,7 +712,54 @@ Mom can silence manually at any time for scenarios the model may not catch clean
 
 When load cell sensor nodes are deployed, weight dropping to zero under the bed legs provides an instant, unambiguous "grandma left the bed" signal. Combined with `patient_location`, reliability of auto-silencing improves significantly.
 
-## 16. Risk Register
+## 16. Developer Tooling
+
+### 16.1 Model Probe (`probe.py`)
+
+A standalone CLI tool for interactively testing the VLM without running the full monitor pipeline. Used to evaluate what the model can and cannot detect, iterate on prompt ideas, and validate model behavior against live or saved frames.
+
+**Problem it solves:** The production monitor enforces a strict JSON response schema (via `vlm_parser.py`) tuned for eldercare assessment. Testing any other prompt — object detection, scene description, capability probing — fails schema validation. `probe.py` bypasses the schema entirely, returns raw model responses, and supports continuous stream watching so the developer can observe model behavior over time with minimal friction.
+
+**Usage:**
+```bash
+# Stream mode (default) — loops at configured interval, reads probe_prompt.md
+python probe.py
+
+# Single frame from live go2rtc snapshot
+python probe.py --single
+
+# Single frame from saved JPEG (implies --single)
+python probe.py --image /path/to/frame.jpg
+
+# Inline prompt override
+python probe.py --prompt "Is there a cat visible?"
+
+# Different prompt file
+python probe.py --prompt-file my_experiment.md
+
+# Override provider or model without editing config.yaml
+python probe.py --provider openrouter --model qwen/qwen3-vl-32b-instruct
+```
+
+**Behavior:**
+- **Stream mode (default):** fetches a live frame from go2rtc, sends to model, prints raw response, sleeps `monitor.interval_seconds`, repeats until Ctrl+C. Prints a timestamp header before each response. On Ctrl+C, prints a clean summary ("Stopped after N cycles") instead of a traceback.
+- **Single mode (`--single` or `--image`):** fetches one frame, prints response, exits.
+- **Prompt resolution order:** `--prompt` (inline) → `--prompt-file <path>` → `probe_prompt.md` in project root. If the resolved file is missing or empty, exits with a clear error message.
+- **Provider/model:** defaults to `config.yaml` values; `--provider` and `--model` override without touching the file.
+- **go2rtc errors:** prints a human-readable message ("Could not connect to go2rtc at {url} — is it running?") rather than a raw traceback.
+- Makes direct HTTP calls to the provider endpoint — does not go through `vlm_parser.py` or the provider classes. Raw response string only.
+- Requires a valid `config.yaml` in the project root (same as all other scripts). Pushover keys must be present even though alerts are never sent — this is a known limitation of `load_config()` validation.
+- Not intended for production use; developer tool only.
+
+**Files:**
+- `probe.py` (new, ~100 lines)
+- `probe_prompt.md` (new, starter prompt — committed to repo)
+
+No changes to existing modules.
+
+---
+
+## 17. Risk Register
 
 | Risk | Likelihood | Severity | Mitigation |
 |---|---|---|---|
@@ -729,7 +776,7 @@ When load cell sensor nodes are deployed, weight dropping to zero under the bed 
 
 ---
 
-## 16. Open Questions
+## 18. Open Questions
 
 1. **Camera mount position** — Overhead (ceiling) vs. high wall at 45° angle. Needs physical room assessment before final install. Overhead is preferred.
 
@@ -749,7 +796,7 @@ When load cell sensor nodes are deployed, weight dropping to zero under the bed 
 
 ---
 
-## 17. Florida Deployment — First Boot Sequence
+## 19. Florida Deployment — First Boot Sequence
 
 The Pi ships pre-configured. Mom's only physical actions are: plug in power, plug in Ethernet (or confirm it connects via WiFi). Everything else is automatic or builder-managed remotely.
 
@@ -796,7 +843,7 @@ Checks and reports:
 
 Exits 0 on all pass, 1 on any failure. Builder can run this remotely via Tailscale SSH at any time.
 
-## 18. Developer Setup Notes
+## 20. Developer Setup Notes
 
 ### Getting Started (Claude Code)
 
@@ -836,4 +883,4 @@ Note: `picamera2` is NOT a dependency. Camera access is handled entirely by go2r
 
 ---
 
-*This PRD reflects all decisions made through April 7, 2026. Hardware confirmed via Amazon screenshots. Architecture finalized through builder-led design sessions.*
+*This PRD reflects all decisions made through April 10, 2026. Hardware confirmed via Amazon screenshots. Architecture finalized through builder-led design sessions.*

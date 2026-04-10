@@ -49,6 +49,7 @@ grandma-watcher/
     test_openrouter_provider.py
     test_lmstudio_provider.py
     test_probe.py
+    test_web_server.py
   setup/
     install.sh
     tailscale_setup.sh
@@ -116,9 +117,9 @@ After completing a task, log any corrections, preferences, patterns, or discover
 ### Recent Lessons (last 5)
 
 <!-- Claude maintains this as a quick-reference mirror of the most recent entries from context/lessons.md. -->
-2026-04-10: Frontend smoke tests for the dashboard can run against a temporary Flask app seeded with fixture images and JSONL entries — that verifies gallery, modal, silence, and labeling flows without mutating tracked dataset files.
-2026-04-09: Full-cycle monitor integration tests should reuse the real `run_cycle(...)` and fake only the outer boundaries (frame source, provider, alert channel) — patching deeper adapters duplicates unit coverage and adds brittleness.
-2026-04-09: A one-cycle orchestrator should accept injectable boundary helpers like `fetch_frame` — that keeps monitor-loop tests narrow and deterministic without patching global network calls.
-2026-04-09: `dataclasses.asdict()` preserves Enum objects inside nested dataclasses — dataset JSONL serialization needs an explicit recursive `.value` conversion before `json.dumps()`.
-2026-04-09: Pushover HTTP API requires form-encoded POST (`data=` not `json=`); priority 2 (emergency) requires `retry` and `expire` params — omit them entirely for lower priorities.
-2026-04-09: Patch requests.Session.post (not requests.post) — instance method lookup falls through to class, so patching the class method intercepts already-constructed instances.
+2026-04-10: Flask app silence state must be scoped to the `create_app` closure, not a module-level global — module-level state leaks across test instances sharing the same import; closure-scoped state resets with each `create_app()` call.
+2026-04-10: When testing a route that reads a config-derived file path, use `dataclasses.replace` on the nested config dataclass to override the path to `tmp_path` — frozen dataclasses support `replace` so no monkey-patching needed.
+2026-04-10: `git stash --include-untracked` stashes untracked files into a separate stash commit, but `git stash pop` fails if those untracked files already exist (e.g. after a merge created them) — drop the stash after confirming the important tracked-file changes were restored.
+2026-04-10: When a worktree branches from a commit that predates untracked files in the main working tree, those files won't appear in the worktree; the merge back to main will fail unless they're removed first (after verifying the feature branch version is a superset).
+2026-04-10: CSS `#modal-close` overriding `min-height: auto` from a base button rule breaks the 48px tap target — close buttons need explicit `min-height: var(--tap-height)` even when styled differently from other buttons.
+2026-04-10: `flashButton()` re-enables the button internally after the delay — a `finally` block that also re-enables is dead code (idempotent but misleading); only use `finally` for re-enable when there is no `flashButton` call in both branches.
