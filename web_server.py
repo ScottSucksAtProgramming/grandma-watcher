@@ -1,12 +1,14 @@
 """Flask dashboard for grandma-watcher.
 
 Routes:
+    GET  /               Serve caregiver dashboard HTML.
     GET  /stream         Proxy go2rtc MJPEG stream to browser.
     GET  /gallery        Recent log entries with image paths and assessment data.
     GET  /silence        Return current silence status.
     POST /silence        Activate silence for N minutes.
     POST /label/<id>     Write a label to a matching log.jsonl entry.
     POST /report-missed  Append a missed-alert event to checkins.jsonl.
+    GET  /images/<filename>  Serve a saved frame JPEG from dataset.images_dir.
 """
 
 from __future__ import annotations

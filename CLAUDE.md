@@ -45,6 +45,7 @@ grandma-watcher/
     test_protocols.py
     test_prompt_builder.py
     test_vlm_parser.py
+    test_web_server.py
     test_openrouter_provider.py
     test_lmstudio_provider.py
     test_probe.py

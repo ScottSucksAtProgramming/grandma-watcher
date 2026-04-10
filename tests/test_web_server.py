@@ -421,6 +421,20 @@ def test_dashboard_route_returns_html_with_key_elements(client):
         assert element_id in body
 
 
+def test_dashboard_talk_btn_renders_link_when_talk_url_set(sample_config):
+    """GET / renders talk-btn as an <a> link when talk_url is configured."""
+    patched_web = dataclasses.replace(sample_config.web, talk_url="http://100.1.2.3:1984/")
+    cfg = dataclasses.replace(sample_config, web=patched_web)
+    app = create_app(cfg)
+    app.config["TESTING"] = True
+
+    with app.test_client() as c:
+        response = c.get("/")
+    body = response.data.decode()
+    assert 'href="http://100.1.2.3:1984/"' in body
+    assert "disabled" not in body.split("talk-btn")[1].split("</")[0]
+
+
 # ---------------------------------------------------------------------------
 # GET /images/<filename> — dataset frame serving
 # ---------------------------------------------------------------------------
