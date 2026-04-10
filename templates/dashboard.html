@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grandma Monitor</title>
+  <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+
+  <header>
+    <h1>Grandma Monitor</h1>
+    <span id="silence-badge"></span>
+  </header>
+
+  <img id="stream-img" src="/stream" alt="Live camera feed">
+
+  <section id="controls">
+    <button id="silence-btn" type="button">🔕 Silence 30 min</button>
+    {% if talk_url %}
+      <a id="talk-btn" href="{{ talk_url }}" target="_blank" rel="noopener">🎙 Talk</a>
+    {% else %}
+      <button id="talk-btn" class="btn btn--disabled" type="button" disabled
+              title="Requires Tailscale — set talk_url in config.yaml">
+        🎙 Talk
+      </button>
+    {% endif %}
+  </section>
+
+  <section id="gallery-section">
+    <h2>Recent Activity</h2>
+    <div id="gallery"></div>
+  </section>
+
+  <div id="modal" hidden>
+    <div id="modal-sheet">
+      <button id="modal-close" type="button">✕</button>
+      <img id="modal-img" src="" alt="Frame from monitoring">
+      <p id="modal-reason"></p>
+      <div id="modal-actions">
+        <button id="modal-real" type="button">✓ Real Issue</button>
+        <button id="modal-false" type="button">✗ False Alarm</button>
+      </div>
+    </div>
+  </div>
+
+  <section id="report-section">
+    <button id="report-btn" type="button">⚠ Report Missed Alert</button>
+  </section>
+
+  <script src="/static/dashboard.js"></script>
+</body>
+</html>
