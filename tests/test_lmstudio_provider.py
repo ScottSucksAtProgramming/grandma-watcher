@@ -7,8 +7,8 @@ from unittest.mock import Mock, patch
 import pytest
 import requests.exceptions
 
-from models import AssessmentResult
 from lmstudio_provider import LMStudioProvider
+from models import AssessmentResult
 from vlm_parser import VLMParseError
 
 _VALID_CONTENT = (
@@ -52,7 +52,9 @@ def test_assess_posts_to_lmstudio_endpoint(provider, fixture_frame_bytes, sample
     assert url == expected
 
 
-def test_assess_uses_lmstudio_model_not_openrouter_model(provider, fixture_frame_bytes, sample_config):
+def test_assess_uses_lmstudio_model_not_openrouter_model(
+    provider, fixture_frame_bytes, sample_config
+):
     """Must use config.api.lmstudio_model, not config.api.model (an OpenRouter slug)."""
     with patch(
         "lmstudio_provider.requests.Session.post",
@@ -203,6 +205,5 @@ def test_assess_logs_warning_on_http_error(provider, fixture_frame_bytes, caplog
             with pytest.raises(requests.exceptions.HTTPError):
                 provider.assess(fixture_frame_bytes, "test prompt")
     assert any(
-        r.levelno == logging.WARNING and r.name == "lmstudio_provider"
-        for r in caplog.records
+        r.levelno == logging.WARNING and r.name == "lmstudio_provider" for r in caplog.records
     )

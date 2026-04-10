@@ -9,7 +9,6 @@ import requests as req
 
 from web_server import create_app
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -46,7 +45,9 @@ def _make_entry(**overrides) -> dict:
 @pytest.fixture
 def client(sample_config, tmp_path):
     checkin_log_file = tmp_path / "checkins.jsonl"
-    patched_dataset = dataclasses.replace(sample_config.dataset, checkin_log_file=str(checkin_log_file))
+    patched_dataset = dataclasses.replace(
+        sample_config.dataset, checkin_log_file=str(checkin_log_file)
+    )
     cfg = dataclasses.replace(sample_config, dataset=patched_dataset)
     app = create_app(cfg)
     app.config["TESTING"] = True
@@ -139,9 +140,11 @@ def test_gallery_skips_malformed_lines(gallery_client):
     """GET /gallery silently skips lines that are not valid JSON."""
     client, log_file = gallery_client
     log_file.write_text(
-        json.dumps(_make_entry(timestamp="2026-04-09T01:00:00Z")) + "\n"
+        json.dumps(_make_entry(timestamp="2026-04-09T01:00:00Z"))
+        + "\n"
         + "this is not json\n"
-        + json.dumps(_make_entry(timestamp="2026-04-09T02:00:00Z")) + "\n"
+        + json.dumps(_make_entry(timestamp="2026-04-09T02:00:00Z"))
+        + "\n"
     )
 
     data = client.get("/gallery").get_json()
@@ -252,7 +255,9 @@ def test_report_missed_post_returns_ok(checkin_client):
 def checkin_client(sample_config, tmp_path):
     """Client with a temp checkin_log_file so report-missed tests can inspect real writes."""
     checkin_log_file = tmp_path / "checkins.jsonl"
-    patched_dataset = dataclasses.replace(sample_config.dataset, checkin_log_file=str(checkin_log_file))
+    patched_dataset = dataclasses.replace(
+        sample_config.dataset, checkin_log_file=str(checkin_log_file)
+    )
     cfg = dataclasses.replace(sample_config, dataset=patched_dataset)
     app = create_app(cfg)
     app.config["TESTING"] = True
@@ -271,7 +276,7 @@ def test_report_missed_appends_entry_to_checkin_log(checkin_client):
 
 
 def test_report_missed_entry_has_correct_fields(checkin_client):
-    """POST /report-missed writes a valid missed_alert_reported entry with timestamp and source_ip."""
+    """POST /report-missed writes a valid entry with timestamp and source_ip."""
     client, checkin_log_file = checkin_client
 
     client.post("/report-missed")
@@ -302,7 +307,9 @@ def test_report_missed_multiple_calls_append_multiple_entries(checkin_client):
 def checkin_stream_client(sample_config, tmp_path):
     """Client wired to a temp checkin_log_file for stream check-in tests."""
     checkin_log_file = tmp_path / "checkins.jsonl"
-    patched_dataset = dataclasses.replace(sample_config.dataset, checkin_log_file=str(checkin_log_file))
+    patched_dataset = dataclasses.replace(
+        sample_config.dataset, checkin_log_file=str(checkin_log_file)
+    )
     cfg = dataclasses.replace(sample_config, dataset=patched_dataset)
     app = create_app(cfg)
     app.config["TESTING"] = True

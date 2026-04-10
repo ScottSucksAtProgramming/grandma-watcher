@@ -275,7 +275,7 @@ def test_run_cycle_auto_silence_flushes_window_and_suppresses_medium_alert(
 
 
 def test_run_forever_uses_config_out_of_bed_silence_thresholds(sample_config):
-    """run_forever must read out_of_bed_frames_to_silence and in_bed_frames_to_resume from config."""
+    """run_forever must read silence thresholds from config."""
     import monitor
     from monitor import run_forever
 
@@ -296,12 +296,15 @@ def test_run_forever_uses_config_out_of_bed_silence_thresholds(sample_config):
     finally:
         monitor.PatientLocationStateMachine = original_machine
 
-    assert machine_kwargs["out_of_bed_frames_to_silence"] == sample_config.alerts.out_of_bed_frames_to_silence
+    assert (
+        machine_kwargs["out_of_bed_frames_to_silence"]
+        == sample_config.alerts.out_of_bed_frames_to_silence
+    )
     assert machine_kwargs["in_bed_frames_to_resume"] == sample_config.alerts.in_bed_frames_to_resume
 
 
 def test_run_forever_resets_failure_counter_after_successful_cycle(sample_config, caplog):
-    """Success resets the counter: (threshold-1) failures → success → (threshold-1) more → no builder alert."""
+    """Success resets the failure counter before the next failure wave."""
     import monitor
     from monitor import run_forever
 
@@ -344,7 +347,9 @@ def test_run_forever_resets_failure_counter_after_successful_cycle(sample_config
     assert len(builder_channel.alerts) == 0
 
 
-def test_run_forever_sends_builder_alert_when_consecutive_failure_threshold_reached(sample_config, caplog):
+def test_run_forever_sends_builder_alert_when_consecutive_failure_threshold_reached(
+    sample_config, caplog
+):
     """A SYSTEM alert is sent to builder_channel when consecutive_failure_threshold is reached."""
     import monitor
     from monitor import run_forever

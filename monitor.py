@@ -20,6 +20,7 @@ from alert import (
 )
 from config import AppConfig, load_config
 from dataset import record_dataset_entry
+from lmstudio_provider import LMStudioProvider
 from models import (
     Alert,
     AlertPriority,
@@ -28,7 +29,6 @@ from models import (
     DatasetEntry,
     SensorSnapshot,
 )
-from lmstudio_provider import LMStudioProvider
 from openrouter_provider import OpenRouterProvider
 from prompt_builder import build_prompt
 from protocols import AlertChannel, VLMProvider
@@ -254,5 +254,7 @@ def _utc_now_iso() -> str:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
+    )
     raise SystemExit(main())
