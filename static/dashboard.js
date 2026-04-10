@@ -104,3 +104,42 @@ function initGallery() {
 function openModal(entry) {
   console.log("openModal stub", entry);
 }
+
+// ── Silence ────────────────────────────────────────────────
+
+function updateSilenceBadge() {
+  fetch("/silence")
+    .then((r) => r.json())
+    .then((data) => {
+      const badge = document.getElementById("silence-badge");
+      if (!badge) return;
+      if (data.active) {
+        const mins = Math.ceil(data.remaining_seconds / 60);
+        badge.textContent = `🔕 Silenced — ${mins} min remaining`;
+      } else {
+        badge.textContent = "";
+      }
+    })
+    .catch(() => {});
+}
+
+function initSilence() {
+  updateSilenceBadge();
+  setInterval(updateSilenceBadge, 15000);
+}
+
+function initSilenceButton() {
+  const btn = document.getElementById("silence-btn");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    btn.disabled = true;
+    fetch("/silence", { method: "POST" })
+      .then(() => updateSilenceBadge())
+      .catch(() => {})
+      .finally(() => {
+        setTimeout(() => {
+          btn.disabled = false;
+        }, 2000);
+      });
+  });
+}
