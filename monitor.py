@@ -116,6 +116,15 @@ def run_cycle(
         config=config.alerts,
     )
 
+    logger.info(
+        "Assessment: safe=%s confidence=%s location=%s alert=%s | %s",
+        assessment.safe,
+        assessment.confidence.value,
+        assessment.patient_location.value,
+        alert_type.value if alert_type else "none",
+        assessment.reason,
+    )
+
     alert_fired = alert_type is not None
     if alert_type is not None:
         alert_channel.send(build_alert(alert_type, assessment))
