@@ -116,9 +116,9 @@ After completing a task, log any corrections, preferences, patterns, or discover
 ### Recent Lessons (last 5)
 
 <!-- Claude maintains this as a quick-reference mirror of the most recent entries from context/lessons.md. -->
+2026-04-10: Frontend smoke tests for the dashboard can run against a temporary Flask app seeded with fixture images and JSONL entries — that verifies gallery, modal, silence, and labeling flows without mutating tracked dataset files.
 2026-04-09: Full-cycle monitor integration tests should reuse the real `run_cycle(...)` and fake only the outer boundaries (frame source, provider, alert channel) — patching deeper adapters duplicates unit coverage and adds brittleness.
 2026-04-09: A one-cycle orchestrator should accept injectable boundary helpers like `fetch_frame` — that keeps monitor-loop tests narrow and deterministic without patching global network calls.
 2026-04-09: `dataclasses.asdict()` preserves Enum objects inside nested dataclasses — dataset JSONL serialization needs an explicit recursive `.value` conversion before `json.dumps()`.
 2026-04-09: Pushover HTTP API requires form-encoded POST (`data=` not `json=`); priority 2 (emergency) requires `retry` and `expire` params — omit them entirely for lower priorities.
 2026-04-09: Patch requests.Session.post (not requests.post) — instance method lookup falls through to class, so patching the class method intercepts already-constructed instances.
-2026-04-09: LMStudioProvider mirrors OpenRouterProvider structurally but omits the Authorization header and uses lmstudio_base_url + lmstudio_model — test explicitly that the OpenRouter model slug is NOT used.

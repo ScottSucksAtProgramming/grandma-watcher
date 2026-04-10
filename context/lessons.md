@@ -31,3 +31,4 @@ updated: 2026-04-07
 2026-04-09: `dataclasses.asdict()` preserves Enum objects inside nested dataclasses — dataset JSONL serialization needs an explicit recursive `.value` conversion before `json.dumps()`.
 2026-04-09: A one-cycle orchestrator should accept injectable boundary helpers like `fetch_frame` — that keeps monitor-loop tests narrow and deterministic without patching global network calls.
 2026-04-09: Full-cycle monitor integration tests should reuse the real `run_cycle(...)` and fake only the outer boundaries (frame source, provider, alert channel) — patching deeper adapters duplicates unit coverage and adds brittleness.
+2026-04-10: Frontend smoke tests for the dashboard can run against a temporary Flask app seeded with fixture images and JSONL entries — that verifies gallery, modal, silence, and labeling flows without mutating tracked dataset files.

@@ -1,8 +1,9 @@
 # tests/test_probe.py
-import pytest
-import requests
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+
+import pytest
+import requests
 
 import probe
 
@@ -11,8 +12,10 @@ FIXTURE_JPEG = Path(__file__).parent / "fixtures" / "frame.jpeg"
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
+
 def _make_config(provider="lmstudio"):
-    from config import ApiConfig, AppConfig, AlertsConfig, MonitorConfig, StreamConfig
+    from config import AlertsConfig, ApiConfig, AppConfig, MonitorConfig, StreamConfig
+
     return AppConfig(
         api=ApiConfig(
             provider=provider,
@@ -30,6 +33,7 @@ def _make_config(provider="lmstudio"):
 
 
 # ── load_prompt ───────────────────────────────────────────────────────────────
+
 
 def test_load_prompt_returns_inline_string():
     assert probe.load_prompt(inline="Hello model") == "Hello model"
@@ -67,6 +71,7 @@ def test_load_prompt_inline_takes_priority_over_file(tmp_path):
 
 # ── load_image ────────────────────────────────────────────────────────────────
 
+
 def test_load_image_returns_bytes():
     data = probe.load_image(str(FIXTURE_JPEG))
     assert isinstance(data, bytes)
@@ -79,6 +84,7 @@ def test_load_image_missing_file_raises():
 
 
 # ── fetch_frame ───────────────────────────────────────────────────────────────
+
 
 def test_fetch_frame_returns_bytes():
     config = _make_config()
@@ -101,6 +107,7 @@ def test_fetch_frame_raises_connection_error_on_go2rtc_down():
 
 
 # ── raw_completion ────────────────────────────────────────────────────────────
+
 
 def test_raw_completion_lmstudio_returns_raw_string():
     config = _make_config(provider="lmstudio")
@@ -133,9 +140,7 @@ def test_raw_completion_openrouter_sends_auth_header():
 
         probe.raw_completion(b"JPEG", "prompt", config)
 
-    instance.headers.update.assert_called_once_with(
-        {"Authorization": "Bearer test-key"}
-    )
+    instance.headers.update.assert_called_once_with({"Authorization": "Bearer test-key"})
 
 
 def test_raw_completion_provider_override_uses_lmstudio_endpoint():
@@ -149,7 +154,9 @@ def test_raw_completion_provider_override_uses_lmstudio_endpoint():
         MockSession.return_value = instance
 
         probe.raw_completion(
-            b"JPEG", "prompt", config,
+            b"JPEG",
+            "prompt",
+            config,
             provider_override="lmstudio",
         )
 
@@ -168,7 +175,9 @@ def test_raw_completion_model_override_is_sent_in_payload():
         MockSession.return_value = instance
 
         probe.raw_completion(
-            b"JPEG", "prompt", config,
+            b"JPEG",
+            "prompt",
+            config,
             model_override="custom-model-id",
         )
 
@@ -192,11 +201,14 @@ def test_raw_completion_raises_on_missing_choices():
 
 # ── main() ────────────────────────────────────────────────────────────────────
 
+
 def test_main_single_uses_live_frame(capsys):
     config = _make_config()
-    with patch("probe.load_config", return_value=config), \
-         patch("probe.fetch_frame", return_value=b"FRAME") as mock_fetch, \
-         patch("probe.raw_completion", return_value="Cat detected."):
+    with (
+        patch("probe.load_config", return_value=config),
+        patch("probe.fetch_frame", return_value=b"FRAME") as mock_fetch,
+        patch("probe.raw_completion", return_value="Cat detected."),
+    ):
         code = probe.main(["--single", "--prompt", "Is there a cat?"])
 
     mock_fetch.assert_called_once()
@@ -209,9 +221,11 @@ def test_main_image_flag_uses_file_not_go2rtc(capsys, tmp_path):
     img.write_bytes(b"JPEG")
     config = _make_config()
 
-    with patch("probe.load_config", return_value=config), \
-         patch("probe.fetch_frame") as mock_fetch, \
-         patch("probe.raw_completion", return_value="All clear."):
+    with (
+        patch("probe.load_config", return_value=config),
+        patch("probe.fetch_frame") as mock_fetch,
+        patch("probe.raw_completion", return_value="All clear."),
+    ):
         code = probe.main(["--image", str(img), "--prompt", "describe"])
 
     mock_fetch.assert_not_called()
@@ -244,8 +258,10 @@ def test_main_empty_prompt_file_exits_nonzero(capsys, tmp_path):
 
 def test_main_go2rtc_connection_error_prints_friendly_message(capsys):
     config = _make_config()
-    with patch("probe.load_config", return_value=config), \
-         patch("probe.fetch_frame", side_effect=requests.exceptions.ConnectionError):
+    with (
+        patch("probe.load_config", return_value=config),
+        patch("probe.fetch_frame", side_effect=requests.exceptions.ConnectionError),
+    ):
         code = probe.main(["--single", "--prompt", "x"])
     assert code != 0
     assert "go2rtc" in capsys.readouterr().err.lower()
@@ -253,9 +269,11 @@ def test_main_go2rtc_connection_error_prints_friendly_message(capsys):
 
 def test_main_http_error_prints_friendly_message(capsys):
     config = _make_config()
-    with patch("probe.load_config", return_value=config), \
-         patch("probe.fetch_frame", return_value=b"FRAME"), \
-         patch("probe.raw_completion", side_effect=requests.exceptions.HTTPError("401")):
+    with (
+        patch("probe.load_config", return_value=config),
+        patch("probe.fetch_frame", return_value=b"FRAME"),
+        patch("probe.raw_completion", side_effect=requests.exceptions.HTTPError("401")),
+    ):
         code = probe.main(["--single", "--prompt", "x"])
     assert code != 0
     err = capsys.readouterr().err.lower()
@@ -273,10 +291,12 @@ def test_main_stream_mode_loops_and_stops_on_keyboard_interrupt(capsys):
             raise KeyboardInterrupt
         return "Response."
 
-    with patch("probe.load_config", return_value=config), \
-         patch("probe.fetch_frame", return_value=b"FRAME"), \
-         patch("probe.raw_completion", side_effect=fake_completion), \
-         patch("probe.time.sleep"):
+    with (
+        patch("probe.load_config", return_value=config),
+        patch("probe.fetch_frame", return_value=b"FRAME"),
+        patch("probe.raw_completion", side_effect=fake_completion),
+        patch("probe.time.sleep"),
+    ):
         code = probe.main(["--prompt", "x"])
 
     assert call_count >= 1

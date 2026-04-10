@@ -23,8 +23,8 @@ import argparse
 import base64
 import sys
 import time
+from collections.abc import Sequence
 from datetime import UTC, datetime
-from typing import Sequence
 
 import requests
 
@@ -117,11 +117,17 @@ def raw_completion(
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Probe the VLM with a freeform prompt. Loops by default; use --single for one shot."
+        description=(
+            "Probe the VLM with a freeform prompt. " "Loops by default; use --single for one shot."
+        )
     )
-    parser.add_argument("--single", action="store_true", help="Fetch one frame, print response, exit")
+    parser.add_argument(
+        "--single", action="store_true", help="Fetch one frame, print response, exit"
+    )
     parser.add_argument("--image", help="Path to a saved JPEG (implies --single)")
-    parser.add_argument("--prompt", help="Inline prompt (overrides --prompt-file and probe_prompt.md)")
+    parser.add_argument(
+        "--prompt", help="Inline prompt (overrides --prompt-file and probe_prompt.md)"
+    )
     parser.add_argument("--prompt-file", dest="prompt_file", help="Markdown file to use as prompt")
     parser.add_argument("--provider", help="Override provider from config (lmstudio | openrouter)")
     parser.add_argument("--model", help="Override model from config")
@@ -146,7 +152,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         else:
             frame = fetch_frame(config)
         return raw_completion(
-            frame, prompt, config,
+            frame,
+            prompt,
+            config,
             provider_override=args.provider,
             model_override=args.model,
         )
@@ -154,7 +162,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     def _handle_request_error(exc: Exception) -> int:
         if isinstance(exc, requests.exceptions.ConnectionError):
             print(
-                f"Error: could not connect to go2rtc at {config.stream.snapshot_url} — is it running?",
+                (
+                    "Error: could not connect to go2rtc at "
+                    f"{config.stream.snapshot_url} — is it running?"
+                ),
                 file=sys.stderr,
             )
         else:

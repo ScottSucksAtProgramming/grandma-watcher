@@ -17,7 +17,15 @@ import logging
 import time
 
 import requests
-from flask import Flask, Response, jsonify, render_template, request, send_from_directory, stream_with_context
+from flask import (
+    Flask,
+    Response,
+    jsonify,
+    render_template,
+    request,
+    send_from_directory,
+    stream_with_context,
+)
 
 from config import AppConfig, load_config
 
@@ -32,7 +40,7 @@ def _log_checkin(event: str, checkin_log_file: str) -> None:
     from flask import request as _request
 
     entry = {
-        "timestamp": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "timestamp": datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "event": event,
         "source_ip": _request.remote_addr or "",
     }
@@ -190,7 +198,7 @@ def create_app(config: AppConfig) -> Flask:
         import json
 
         entry = {
-            "timestamp": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "timestamp": datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "event": "missed_alert_reported",
             "source_ip": request.remote_addr or "",
         }

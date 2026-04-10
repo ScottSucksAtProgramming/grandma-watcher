@@ -31,8 +31,8 @@ grandma-watcher:
 		- Implement /report-missed route (POST to append missed-alert event to checkins.jsonl) @done
 		- Implement caregiver check-in logging (log stream_opened and gallery_opened events to checkins.jsonl) @done
 		- Build dashboard.html (Mom-facing UI: live stream embed, gallery thumbnails, silence button, talk button) @done
-		- Build dashboard.js (fetch gallery, poll silence state, update UI without full reload) @na
-		- Build dashboard.css (mobile-first, large tap targets, readable on phone) @na
+		- Build dashboard.js (fetch gallery, poll silence state, update UI without full reload) @done
+		- Build dashboard.css (mobile-first, large tap targets, readable on phone) @done
 		- Wire Pushover alert URL to dashboard frame (alert notification links to /gallery#<id>) @na
 		- Set up Cloudflare Tunnel (cloudflared as systemd service, tunnel token in config.yaml) @na
 		- Set up Cloudflare Access + Google OAuth (protect dashboard behind Mom's Google account) @na
