@@ -20,5 +20,6 @@ dataset/images/
 dataset/log.jsonl
 dataset/checkins.jsonl
 
-# AI 
+# AI
 .claude/
+.superpowers/
