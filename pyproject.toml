@@ -1,3 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "grandma-watcher"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "requests",
+    "pyyaml",
+    "flask",
+    "pillow",
+]
+
+[tool.setuptools.packages.find]
+exclude = ["setup*", "context*", "tests*", "docs*", "dataset*", "static*", "templates*"]
+
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
