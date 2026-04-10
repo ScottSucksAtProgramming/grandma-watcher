@@ -15,11 +15,11 @@ streams:
     # Audio input: USB mic via UGREEN adapter (ALSA device)
     # Run `arecord -l` on the Pi to confirm the card name/number.
     # Typical: plughw:CARD=Device,DEV=0  or  plughw:1,0
-    - exec:ffmpeg -hide_banner -nostats -f alsa -channels 1 -sample_rate 16000 -i plughw:1,0 -c:a libopus -ar 48000 -ac 1 -b:a 32k -f rtsp {output}
+    # - exec:ffmpeg -hide_banner -nostats -f alsa -channels 1 -sample_rate 16000 -i plughw:1,0 -c:a libopus -ar 48000 -ac 1 -b:a 32k -f rtsp {output}
     # Backchannel: browser mic -> Pi speaker (Logitech S150 USB)
     # Run `aplay -l` on the Pi to confirm the card name/number.
     # Typical: plughw:CARD=S150,DEV=0  or  plughw:2,0
-    - exec:ffmpeg -hide_banner -nostats -fflags nobuffer+flush_packets -flags low_delay -f alaw -ar 8000 -ac 1 -i pipe:0 -f alsa plughw:2,0#backchannel=1#audio=alaw/8000
+    # - exec:ffmpeg -hide_banner -nostats -fflags nobuffer+flush_packets -flags low_delay -f alaw -ar 8000 -ac 1 -i pipe:0 -f alsa plughw:2,0#backchannel=1#audio=alaw/8000
 
 # ---------- API / ports ----------
 
