@@ -100,11 +100,6 @@ function initGallery() {
     });
 }
 
-// stub — replaced by initModal() in Task 6
-function openModal(entry) {
-  console.log("openModal stub", entry);
-}
-
 // ── Silence ────────────────────────────────────────────────
 
 function updateSilenceBadge() {
@@ -142,4 +137,76 @@ function initSilenceButton() {
         }, 2000);
       });
   });
+}
+
+// ── Modal ──────────────────────────────────────────────────
+
+let currentEntryId = null;
+
+function openModal(entry) {
+  currentEntryId = entry.timestamp;
+  document.getElementById("modal-img").src = `/${entry.image_path}`;
+  document.getElementById("modal-reason").textContent =
+    entry.assessment.reason;
+  document.getElementById("modal").removeAttribute("hidden");
+}
+
+function closeModal() {
+  document.getElementById("modal").setAttribute("hidden", "");
+  currentEntryId = null;
+}
+
+function flashButton(btn, text, durationMs) {
+  const original = btn.textContent;
+  btn.textContent = text;
+  btn.disabled = true;
+  setTimeout(() => {
+    btn.textContent = original;
+    btn.disabled = false;
+  }, durationMs);
+}
+
+function submitLabel(labelValue, btn) {
+  if (!currentEntryId) return;
+  const id = currentEntryId;
+  fetch(`/label/${encodeURIComponent(id)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ label: labelValue }),
+  })
+    .then((r) => {
+      if (!r.ok) throw new Error("label failed");
+      flashButton(btn, "✓ Saved", 1000);
+      if (galleryEntries[id]) {
+        galleryEntries[id].label = labelValue;
+        const card = document.querySelector(`.gallery-card[data-id="${id}"]`);
+        if (card) {
+          const existing = card.querySelector(".gallery-card-label");
+          if (existing) existing.remove();
+          const body = card.querySelector(".gallery-card-body");
+          if (body) body.insertAdjacentHTML("beforeend", renderLabelTag(labelValue));
+        }
+      }
+      setTimeout(closeModal, 1000);
+    })
+    .catch(() => {
+      flashButton(btn, "Error", 1000);
+    });
+}
+
+function initModal() {
+  document.getElementById("modal-close").addEventListener("click", closeModal);
+  document.getElementById("modal").addEventListener("click", (e) => {
+    if (e.target === document.getElementById("modal")) closeModal();
+  });
+  document
+    .getElementById("modal-real")
+    .addEventListener("click", function () {
+      submitLabel("real_issue", this);
+    });
+  document
+    .getElementById("modal-false")
+    .addEventListener("click", function () {
+      submitLabel("false_alarm", this);
+    });
 }
