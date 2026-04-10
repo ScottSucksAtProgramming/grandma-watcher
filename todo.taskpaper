@@ -20,4 +20,4 @@ grandma-watcher:
 		- Implement dataset.py (append DatasetEntry to log.jsonl, save image) @done
 		- Wire monitor.py core loop (fetch frame → assess → decide → alert → log) @done
 		- Integration test: full cycle with mocked camera, mocked OpenRouter, mocked Pushover @done
-		- Smoke test on Pi: verify real camera frame flows through and alert fires correctly @na
+		- Smoke test on Pi: verify real camera frame flows through and alert fires correctly @done
