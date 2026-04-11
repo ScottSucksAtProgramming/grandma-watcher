@@ -1,6 +1,6 @@
 # Grandma Watcher
 
-> An AI-powered passive monitoring system for a bed-bound elderly patient with Parkinson's disease.
+> Passive AI monitoring for the people who need it most.
 
 <!-- LOGO: replace this comment with your logo image tag once created -->
 <!-- SCREENSHOT: replace this comment with a dashboard screenshot -->
