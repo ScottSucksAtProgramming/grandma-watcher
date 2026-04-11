@@ -7,6 +7,7 @@ Quick-reference for finding content in this directory. For conventions, see `con
 | File | Purpose | When to Use |
 |------|---------|-------------|
 | `monitor.py` | Main loop: capture → prompt → API → alert → log | Entry point for monitoring logic |
+| `healthchecks.py` | Healthchecks.io dead-man's-switch pinger (app-level heartbeat) | When modifying system health monitoring |
 | `web_server.py` | Flask dashboard: /stream, /gallery, /talk, /status | Entry point for the web UI |
 | `alert.py` | Pushover wrapper + cooldown logic | When modifying alert behavior |
 | `sensors.py` | HTTP polling of Pi Zero sensor nodes (Phase 2) | When working on sensor integration |
@@ -21,6 +22,7 @@ Quick-reference for finding content in this directory. For conventions, see `con
 | File/Folder | Purpose | When to Use |
 |-------------|---------|-------------|
 | `setup/install.sh` | Full system setup script for Pi | Pi first-boot setup |
+| `setup/healthcheck_ping.sh` | OS-level cron heartbeat script (pings system_ping_url every 5 min) | Verifying or reinstalling cron heartbeat |
 | `setup/tailscale_setup.sh` | Tailscale VPN install/config | Builder remote access setup |
 | `setup/cloudflare_setup.sh` | Cloudflare Tunnel install/config | Mom's browser access setup |
 | `setup/systemd/` | systemd service files for monitor, web, go2rtc | When configuring auto-start on Pi |

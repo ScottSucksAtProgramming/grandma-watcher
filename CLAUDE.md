@@ -81,15 +81,36 @@ grandma-watcher/
     api_call_analysis.csv
     superpowers/
       specs/
+        2026-04-08-config-loader-design.md
         2026-04-08-models-protocols-design.md
+        2026-04-08-pyproject-tooling-design.md
+        2026-04-09-alert-sliding-window-cooldown-design.md
         2026-04-09-dataset-logging-design.md
+        2026-04-09-lmstudio-provider-design.md
         2026-04-09-monitor-core-loop-design.md
         2026-04-09-monitor-integration-test-design.md
+        2026-04-09-prompt-builder.md
+        2026-04-10-alert-url-wiring-design.md
+        2026-04-10-dashboard-frontend-design.md
+        2026-04-10-dashboard-html-design.md
+        2026-04-11-healthchecks-integration-design.md
       plans/
+        2026-04-08-config-loader.md
         2026-04-08-models-protocols.md
+        2026-04-08-pyproject-tooling.md
+        2026-04-09-alert-sliding-window-cooldown.md
         2026-04-09-dataset-logging.md
+        2026-04-09-lmstudio-provider.md
         2026-04-09-monitor-core-loop.md
         2026-04-09-monitor-integration-test.md
+        2026-04-09-patient-location-state-machine.md
+        2026-04-09-prompt-builder.md
+        2026-04-09-pushover-channel.md
+        2026-04-10-alert-url-wiring.md
+        2026-04-10-dashboard-frontend.md
+        2026-04-10-dashboard-html.md
+        2026-04-10-probe-tool.md
+        2026-04-11-healthchecks-integration.md
   context/
     conventions.md
     dev-environment.md
@@ -125,7 +146,7 @@ After completing a task, log any corrections, preferences, patterns, or discover
 ### Recent Lessons (last 5)
 
 <!-- Claude maintains this as a quick-reference mirror of the most recent entries from context/lessons.md. -->
-2026-04-10: `build_alert()` keyword-only args (`*`) keep the call site readable and prevent accidental positional mismatches when adding optional plumbing like `dashboard_url` and `timestamp` — frozen dataclass fields are picked up automatically by `_build_section` when added with a default.
 2026-04-11: NanoGPT API is OpenAI-compatible at https://nano-gpt.com/api/v1; new cloud providers need a *_provider.py, api key + base_url fields in ApiConfig, entry in _PROVIDER_REQUIRED_SECRETS, and an elif in monitor.main().
 2026-04-10: Cloudflare Tunnel setup — store the tunnel token in EnvironmentFile=/etc/grandma-watcher/cloudflare.env (mode 600) so it stays out of the service unit (which is checked into git); systemd reads EnvironmentFile as root before dropping to the service user, so root-owned 600 works fine.
-2026-04-11: When mocking `time.monotonic` in `run_forever` tests with a finite iterator, the iterator runs out because multiple monotonic calls occur per iteration (init + `now` + outage check + `last_successful_ping_at` on success) — use `sustained_outage_minutes=0` in the test config instead, which removes the need to mock time entirely.
+2026-04-11: When mocking `time.monotonic` in `run_forever` tests with a finite iterator, the iterator runs out because multiple monotonic calls occur per iteration — use `sustained_outage_minutes=0` in the test config instead, which removes the need to mock time entirely.
+2026-04-11: `crontab -u <user>` in install.sh requires root and writes to a named user's crontab — use `sudo -u "$SERVICE_USER" crontab` instead so the entry lands in the correct user's crontab rather than root's.
