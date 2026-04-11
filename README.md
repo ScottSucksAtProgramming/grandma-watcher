@@ -2,8 +2,8 @@
 
 > Passive AI monitoring for the people who need it most.
 
-<!-- LOGO: replace this comment with your logo image tag once created -->
-<!-- SCREENSHOT: replace this comment with a dashboard screenshot -->
+<!-- LOGO: <p align="center"><img src="docs/images/logo.png" alt="Grandma Watcher" width="200"></p> -->
+<!-- BANNER: <p align="center"><img src="docs/images/banner.png" alt="Grandma Watcher banner"></p> -->
 
 ![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue)
 ![Platform](https://img.shields.io/badge/Platform-Raspberry%20Pi%205-c51a4a)
@@ -114,7 +114,7 @@ graph TD
 | Storage | 64GB+ microSD (A2/UHS-I) | Stores video dataset locally |
 | UPS | CyberPower CP425G or APC BE600M1 | Prevents data corruption on power loss |
 
-<!-- HARDWARE_PHOTO: add a photo of the assembled Pi with camera mounted -->
+<!-- HARDWARE_PHOTO: <img src="docs/images/hardware.jpg" alt="Raspberry Pi 5 with NoIR camera mounted"> -->
 
 ---
 
@@ -189,9 +189,9 @@ alerts:
 
 ## Screenshots
 
-<!-- SCREENSHOT_DASHBOARD: full dashboard on phone — stream, controls, gallery -->
-<!-- SCREENSHOT_ALERT: Pushover alert notification on phone -->
-<!-- SCREENSHOT_GALLERY: gallery grid with safe/unsafe badges -->
+<!-- SCREENSHOT_DASHBOARD: <img src="docs/images/dashboard.png" alt="Dashboard on phone"> -->
+<!-- SCREENSHOT_ALERT: <img src="docs/images/alert.png" alt="Pushover alert notification"> -->
+<!-- SCREENSHOT_GALLERY: <img src="docs/images/gallery.png" alt="Gallery with safe/unsafe badges"> -->
 
 ---
 

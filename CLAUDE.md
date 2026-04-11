@@ -79,6 +79,7 @@ grandma-watcher/
     INSTALL_GUIDE.md
     SENSOR_SETUP.md
     token-usage-analysis.md
+    images/
     api_call_analysis.csv
     superpowers/
       specs/
