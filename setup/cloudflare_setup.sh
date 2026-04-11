@@ -61,7 +61,10 @@ chmod 600 "$ENV_FILE"
 echo "Wrote tunnel token to $ENV_FILE (mode 600)."
 
 # --- 4. Install and enable systemd service ----------------------------------------
-cp "$SERVICE_SRC" "$SERVICE_DEST"
+# Substitute the actual user (SUDO_USER) for the placeholder "pi" in the service file.
+SERVICE_USER="${SUDO_USER:-pi}"
+sed "s/User=pi/User=${SERVICE_USER}/g; s/Group=pi/Group=${SERVICE_USER}/g" \
+  "$SERVICE_SRC" > "$SERVICE_DEST"
 systemctl daemon-reload
 systemctl enable cloudflared.service
 systemctl restart cloudflared.service
