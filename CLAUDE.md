@@ -146,7 +146,8 @@ After completing a task, log any corrections, preferences, patterns, or discover
 ### Recent Lessons (last 5)
 
 <!-- Claude maintains this as a quick-reference mirror of the most recent entries from context/lessons.md. -->
-2026-04-11: NanoGPT API is OpenAI-compatible at https://nano-gpt.com/api/v1; new cloud providers need a *_provider.py, api key + base_url fields in ApiConfig, entry in _PROVIDER_REQUIRED_SECRETS, and an elif in monitor.main().
 2026-04-10: Cloudflare Tunnel setup — store the tunnel token in EnvironmentFile=/etc/grandma-watcher/cloudflare.env (mode 600) so it stays out of the service unit (which is checked into git); systemd reads EnvironmentFile as root before dropping to the service user, so root-owned 600 works fine.
 2026-04-11: When mocking `time.monotonic` in `run_forever` tests with a finite iterator, the iterator runs out because multiple monotonic calls occur per iteration — use `sustained_outage_minutes=0` in the test config instead, which removes the need to mock time entirely.
 2026-04-11: `crontab -u <user>` in install.sh requires root and writes to a named user's crontab — use `sudo -u "$SERVICE_USER" crontab` instead so the entry lands in the correct user's crontab rather than root's.
+2026-04-11: NanoGPT API is OpenAI-compatible at https://nano-gpt.com/api/v1; new cloud providers need a *_provider.py, api key + base_url fields in ApiConfig, entry in _PROVIDER_REQUIRED_SECRETS, and an elif in monitor.main().
+2026-04-11: MJPEG streams can stall silently without firing an error event — add exponential-backoff error retry (3s base, 60s max) and a periodic forced reconnect (setInterval every 5 min) as a stall safety net. WebRTC video would fix this properly but won't traverse Cloudflare Tunnel (UDP).

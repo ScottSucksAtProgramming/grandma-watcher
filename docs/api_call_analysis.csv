@@ -1,0 +1,36 @@
+Timestamp,Model,Input Tokens,Output Tokens,Total Tokens,Cost
+"4/11/2026, 1:08:54 PM",Qwen3 VL 235B A22B Instruct,1143,56,1199,$0
+"4/11/2026, 1:08:22 PM",Qwen3 VL 235B A22B Instruct,1143,56,1199,$0
+"4/11/2026, 1:07:47 PM",Qwen3 VL 235B A22B Instruct,1143,62,1205,$0
+"4/11/2026, 1:07:14 PM",Qwen3 VL 235B A22B Instruct,1143,56,1199,$0
+"4/11/2026, 1:06:39 PM",Qwen3 VL 235B A22B Instruct,1143,62,1205,$0
+"4/11/2026, 1:06:07 PM",Qwen3 VL 235B A22B Instruct,1143,66,1209,$0
+"4/11/2026, 1:05:30 PM",Qwen3 VL 235B A22B Instruct,1143,66,1209,$0
+"4/11/2026, 1:04:56 PM",Qwen3 VL 235B A22B Instruct,1143,62,1205,$0
+"4/11/2026, 1:04:21 PM",Qwen3 VL 235B A22B Instruct,1143,61,1204,$0
+"4/11/2026, 1:03:49 PM",Qwen3 VL 235B A22B Instruct,1143,60,1203,$0
+"4/11/2026, 1:03:14 PM",Qwen3 VL 235B A22B Instruct,1143,62,1205,$0
+"4/11/2026, 1:02:42 PM",Qwen3 VL 235B A22B Instruct,1143,61,1204,$0
+"4/11/2026, 1:02:09 PM",Qwen3 VL 235B A22B Instruct,1143,56,1199,$0
+"4/11/2026, 1:01:32 PM",Qwen3 VL 235B A22B Instruct,1143,51,1194,$0
+"4/11/2026, 1:00:59 PM",Qwen3 VL 235B A22B Instruct,1143,62,1205,$0
+"4/11/2026, 1:00:26 PM",Qwen3 VL 235B A22B Instruct,1143,51,1194,$0
+"4/11/2026, 12:59:54 PM",Qwen3 VL 235B A22B Instruct,1143,60,1203,$0
+"4/11/2026, 12:59:18 PM",Qwen3 VL 235B A22B Instruct,1143,62,1205,$0
+"4/11/2026, 12:58:45 PM",Qwen3 VL 235B A22B Instruct,1143,56,1199,$0
+"4/11/2026, 12:58:12 PM",Qwen3 VL 235B A22B Instruct,1143,56,1199,$0
+,,,,
+AVERAGES,,1143,59.2,1202.2,
+,,,,
+USAGE PROJECTIONS,,,,
+Interval,Prompts/Day,Tokens/Day,Tokens/Week,Under 60M Limit?
+20 seconds,4320,5193504,36354528,YES
+30 seconds,2880,3462336,24236352,YES
+60 seconds,1440,1731168,12118176,YES
+120 seconds,720,865584,6059088,YES
+,,,,
+NOTES,,,,
+"Input tokens are constant at 1143 (fixed prompt + image encoding)",,,,
+"Output tokens average 59.2 (range: 51–66) — very stable",,,,
+"All four intervals are well under the 60M/week NanoGPT limit",,,,
+"Current config uses 30s interval — uses ~24M tokens/week (40% of limit)",,,,

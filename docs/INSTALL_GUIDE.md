@@ -217,18 +217,16 @@ cd grandma-watcher
 ## Step 11: Configure the Application
 
 ```bash
-# Copy example config
-cp config.yaml.example config.yaml
-
-# Edit with your settings
+# Create config from scratch (config.yaml is in .gitignore — never committed)
 nano config.yaml
 ```
 
-**Minimum required changes:**
-- `openrouter.api_key` — Your OpenRouter API key
-- `pushover.user_key` — Your Pushover user key
-- `pushover.app_token` — Your Pushover app token
-- `camera.stream_url` — Usually `http://localhost:1984/api/frame.jpeg?src=grandma`
+**Minimum required keys:**
+- `api.openrouter_api_key` — Your OpenRouter API key
+- `alerts.pushover_api_key` — Your Pushover app token
+- `alerts.pushover_user_key` — Your Pushover user key
+
+See `config.py` for the full schema and all available settings.
 
 ---
 
@@ -246,9 +244,9 @@ sudo raspi-config
 2. **Install go2rtc** (for video streaming):
 
 ```bash
-# This will be handled by setup/install.sh or manually:
+# Handled by setup/install.sh — review go2rtc.yaml for camera settings
 cd ~/projects/grandma-watcher
-# Follow camera setup guide in docs/CAMERA_SETUP.md
+bash setup/install.sh
 ```
 
 3. **Note the CSI camera ribbon cable** — connect after full system setup is verified
@@ -288,10 +286,11 @@ ssh pi@192.168.1.XXX
 
 | Status | Task | Location |
 |--------|------|----------|
-| ⬜ | Install go2rtc and configure camera | `docs/CAMERA_SETUP.md` |
-| ⬜ | Run setup/install.sh | `setup/install.sh` |
-| ⬜ | Configure Tailscale for remote access | `docs/TAILSCALE_SETUP.md` |
-| ⬜ | Test monitoring loop | `python monitor.py --dry-run` |
+| ⬜ | Run full system setup | `setup/install.sh` |
+| ⬜ | Configure Tailscale for remote access | `setup/tailscale_setup.sh` |
+| ⬜ | Configure Cloudflare Tunnel | `setup/cloudflare_setup.sh` |
+| ⬜ | Review go2rtc camera settings | `go2rtc.yaml` |
+| ⬜ | Test monitoring loop | `python monitor.py` |
 
 ---
 
@@ -318,4 +317,4 @@ ssh pi@192.168.1.XXX
 
 ---
 
-*Last updated: 2026-04-09*
+*Last updated: 2026-04-11*

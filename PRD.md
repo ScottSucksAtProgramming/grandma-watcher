@@ -1,7 +1,7 @@
 # grandma-watcher — Product Requirements Document
 
-**Version:** 2.6
-**Last Updated:** April 10, 2026
+**Version:** 2.7
+**Last Updated:** April 11, 2026
 **Status:** Ready for Development  
 
 ---
@@ -796,7 +796,95 @@ No changes to existing modules.
 
 ---
 
-## 19. Florida Deployment — First Boot Sequence
+## 19. Security Hardening
+
+Security hardening is a pre-ship requirement. All items in §19.1 must be complete before the Pi leaves the builder's hands.
+
+### 19.1 Pre-Ship Security Checklist
+
+- [ ] **Disable Pi Connect** — Pi Connect is used during development for remote desktop access. Disable before shipping: `sudo systemctl disable --now piconnect` (or equivalent). Tailscale SSH is the only remote access path post-ship.
+- [ ] **Bind go2rtc to localhost** — Change `go2rtc.yaml` to bind the API/snapshot port (`1984`) to `127.0.0.1` only. This prevents direct access to the stream on the local network, even from other devices on Mom's WiFi. The Flask server proxies it; nothing else needs direct access.
+- [ ] **Tailscale-gate the video stream** — The Flask MJPEG proxy endpoint must check that the request arrives via the Tailscale network interface before forwarding to go2rtc. Requests arriving via Cloudflare (i.e., without a valid Tailscale source) receive a static placeholder image. Mom has Tailscale installed; this adds no friction for her day-to-day use.
+- [ ] **Enable 2FA on builder's Google account** — The builder's Google account controls Cloudflare Access, which controls who can log in to the dashboard. A hardware security key or TOTP authenticator app must be active on this account before shipping.
+- [ ] **Rotate all API keys** — Rotate OpenRouter, Hyperbolic, and Pushover keys immediately before flashing the final SD card. Keys present during development are considered potentially exposed.
+- [ ] **Verify `config.yaml` is in `.gitignore`** — API keys, Pushover user keys, and the Cloudflare tunnel token must never be committed to the repository.
+
+### 19.2 Dataset Encryption and Archival
+
+Images are sensitive health data. The archival pipeline handles them in two stages:
+
+**Stage 1 — Active review window (0–24 hours)**
+- Images land in `dataset/images/` unencrypted
+- Viewable in the dashboard gallery as normal
+- Mom can review and label frames (correct / false positive / false negative) during this window
+- Flagged images (any label applied) are excluded from archival until the builder reviews them
+
+**Stage 2 — Encrypted archive (24+ hours)**
+- A systemd timer runs hourly
+- Finds images in `dataset/images/` older than 24 hours (excluding flagged)
+- Encrypts each with `age -r <public_key>`, writes to `dataset/archive/` as `.age` files
+- Verifies output is non-zero before deleting the original
+- Logs the archival event to `log.jsonl` (`"image_archived": true`)
+
+**Key management:**
+- The `age` public key is stored on the Pi (encrypts only)
+- The private key lives on the builder's NAS (decrypts only)
+- A stolen Pi has only encrypted `.age` files in `dataset/archive/` — unreadable without the private key
+- For images still in the 24-hour review window: these are unencrypted and represent the primary remaining physical theft risk; the review window is a deliberate usability tradeoff
+
+**NAS sync and deletion:**
+- Nightly `rsync` (systemd timer or cron) syncs `dataset/archive/` to builder's NAS
+- After confirmed sync, archived `.age` files are deleted from the Pi
+- The `log.jsonl` and `checkins.jsonl` files sync to NAS on the same schedule but are not deleted from the Pi (metadata only, no images)
+- NAS is on a separate VLAN behind pfSense with rigid ACLs; encrypted blobs are also encrypted at rest on the NAS
+
+**Config keys (in `config.yaml`):**
+
+```yaml
+security:
+  archive_after_hours: 24        # hours before unreviewed images are encrypted and archived
+  age_public_key: ""             # age public key for dataset encryption
+  nas_sync_enabled: false        # enable nightly rsync to NAS (Phase 3)
+  nas_rsync_target: ""           # rsync destination, e.g. user@nas.local:/path/to/archive
+```
+
+### 19.3 Access Notifications and Stream Kill Switch
+
+**Access notifications:**
+- Every time a new session opens the dashboard, a Pushover notification fires to the builder
+- Notification includes source IP and timestamp
+- Gives the builder early warning of unexpected access without burdening Mom with alerts she initiated herself
+- Implemented as a Flask session hook
+
+**Stream kill switch:**
+- Dashboard button: "Pause Stream"
+- Sets a `stream_paused` flag in Flask app state
+- The MJPEG proxy endpoint returns a static placeholder image when paused
+- Safety monitoring (AI analysis loop) is **never interrupted** by this flag — only the human-viewable stream is affected
+- Auto-resumes after a configurable timeout (default: 4 hours) to prevent accidental permanent pausing
+- Pushover notification fires to builder when stream is paused or resumed
+- State is shown clearly on the dashboard (red banner when paused)
+
+```yaml
+security:
+  stream_pause_auto_resume_hours: 4   # auto-resume stream after this many hours
+```
+
+### 19.4 Threat Model Summary
+
+| Threat | Mitigated By | Residual Risk |
+|---|---|---|
+| Unauthorized remote access to dashboard | Cloudflare HTTPS + Google OAuth + Tailscale device enrollment | Google account compromise (mitigated by 2FA) |
+| Unauthorized SSH access | Tailscale (device enrollment required) | Tailscale account compromise |
+| Physical theft — active images (0–24h) | Short sync+delete cycle; physical security of device | Unencrypted images in 24h review window |
+| Physical theft — archived images | `age` encryption; private key offsite | None — encrypted blobs unreadable without private key |
+| Third-party AI provider retaining frames | Encrypted transport; provider data policy | Unverifiable policy claim — assume frames may be retained |
+| Local network snooping | go2rtc bound to localhost; all external traffic via Cloudflare/Tailscale | None significant |
+| Pi Connect remote access | Disabled pre-ship | None post-ship |
+
+---
+
+## 20. Florida Deployment — First Boot Sequence
 
 The Pi ships pre-configured. Mom's only physical actions are: plug in power, plug in Ethernet (or confirm it connects via WiFi). Everything else is automatic or builder-managed remotely.
 
@@ -843,7 +931,7 @@ Checks and reports:
 
 Exits 0 on all pass, 1 on any failure. Builder can run this remotely via Tailscale SSH at any time.
 
-## 20. Developer Setup Notes
+## 21. Developer Setup Notes
 
 ### Getting Started (Claude Code)
 
@@ -883,4 +971,4 @@ Note: `picamera2` is NOT a dependency. Camera access is handled entirely by go2r
 
 ---
 
-*This PRD reflects all decisions made through April 10, 2026. Hardware confirmed via Amazon screenshots. Architecture finalized through builder-led design sessions.*
+*This PRD reflects all decisions made through April 11, 2026. Hardware confirmed via Amazon screenshots. Architecture finalized through builder-led design sessions.*
