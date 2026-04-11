@@ -1,0 +1,32 @@
+[Unit]
+Description=Cloudflare Tunnel for grandma-watcher
+Documentation=https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+
+# Token is written to this file by setup/cloudflare_setup.sh
+EnvironmentFile=/etc/grandma-watcher/cloudflare.env
+
+ExecStart=/usr/local/bin/cloudflared tunnel run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+
+# Restart policy
+Restart=on-failure
+RestartSec=5
+RestartSteps=5
+RestartMaxDelaySec=60
+
+# Resource limits (Pi 5)
+MemoryMax=128M
+
+# Logging to journald
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cloudflared
+
+[Install]
+WantedBy=multi-user.target

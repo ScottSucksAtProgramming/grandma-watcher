@@ -34,6 +34,6 @@ grandma-watcher:
 		- Build dashboard.js (fetch gallery, poll silence state, update UI without full reload) @done
 		- Build dashboard.css (mobile-first, large tap targets, readable on phone) @done
 		- Wire Pushover alert URL to dashboard frame (alert notification links to /gallery#<id>) @done
-		- Set up Cloudflare Tunnel (cloudflared as systemd service, tunnel token in config.yaml) @na
+		- Set up Cloudflare Tunnel (cloudflared as systemd service, tunnel token in config.yaml) @done
 		- Set up Cloudflare Access + Google OAuth (protect dashboard behind Mom's Google account) @na
 		- Smoke test dashboard on Pi: stream visible, gallery loads, silence toggles, label writes to log @na
