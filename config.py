@@ -64,6 +64,8 @@ class ApiConfig:
     consecutive_failure_threshold: int = 5
     lmstudio_base_url: str = "http://localhost:1234"
     lmstudio_model: str = "qwen3-vlm-7b"
+    nanogpt_api_key: str = ""
+    nanogpt_base_url: str = "https://nano-gpt.com/api/v1"
 
 
 @dataclass(frozen=True)
@@ -230,6 +232,9 @@ _UNCONDITIONAL_REQUIRED_SECRETS: list[tuple[str, Any]] = [
 _PROVIDER_REQUIRED_SECRETS: dict[str, list[tuple[str, Any]]] = {
     "openrouter": [
         ("api.openrouter_api_key", lambda c: c.api.openrouter_api_key),
+    ],
+    "nanogpt": [
+        ("api.nanogpt_api_key", lambda c: c.api.nanogpt_api_key),
     ],
 }
 

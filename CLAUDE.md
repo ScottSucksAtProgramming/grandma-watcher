@@ -26,6 +26,7 @@ grandma-watcher/
   vlm_parser.py
   openrouter_provider.py
   lmstudio_provider.py
+  nanogpt_provider.py
   dataset.py
   smoke_test.py
   probe.py
@@ -48,6 +49,7 @@ grandma-watcher/
     test_web_server.py
     test_openrouter_provider.py
     test_lmstudio_provider.py
+    test_nanogpt_provider.py
     test_probe.py
     test_web_server.py
   setup/
@@ -121,4 +123,5 @@ After completing a task, log any corrections, preferences, patterns, or discover
 2026-04-10: CSS `#modal-close` overriding `min-height: auto` from a base button rule breaks the 48px tap target — close buttons need explicit `min-height: var(--tap-height)` even when styled differently from other buttons.
 2026-04-10: `flashButton()` re-enables the button internally after the delay — a `finally` block that also re-enables is dead code (idempotent but misleading); only use `finally` for re-enable when there is no `flashButton` call in both branches.
 2026-04-10: `build_alert()` keyword-only args (`*`) keep the call site readable and prevent accidental positional mismatches when adding optional plumbing like `dashboard_url` and `timestamp` — frozen dataclass fields are picked up automatically by `_build_section` when added with a default.
+2026-04-11: NanoGPT API is OpenAI-compatible at https://nano-gpt.com/api/v1; new cloud providers need a *_provider.py, api key + base_url fields in ApiConfig, entry in _PROVIDER_REQUIRED_SECRETS, and an elif in monitor.main().
 2026-04-10: Cloudflare Tunnel setup — store the tunnel token in EnvironmentFile=/etc/grandma-watcher/cloudflare.env (mode 600) so it stays out of the service unit (which is checked into git); systemd reads EnvironmentFile as root before dropping to the service user, so root-owned 600 works fine.

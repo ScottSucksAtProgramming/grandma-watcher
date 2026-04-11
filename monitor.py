@@ -21,6 +21,7 @@ from alert import (
 from config import AppConfig, load_config
 from dataset import record_dataset_entry
 from lmstudio_provider import LMStudioProvider
+from nanogpt_provider import NanoGPTProvider
 from models import (
     Alert,
     AlertPriority,
@@ -242,6 +243,8 @@ def main() -> int:
     if config.api.provider == "lmstudio":
         provider: VLMProvider = LMStudioProvider(config.api)
         provider.load_model()
+    elif config.api.provider == "nanogpt":
+        provider = NanoGPTProvider(config.api)
     else:
         provider = OpenRouterProvider(config.api)
     alert_channel = PushoverChannel(
