@@ -2,7 +2,7 @@ import dataclasses
 import json
 import logging
 from collections import deque
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
@@ -464,6 +464,212 @@ def test_run_forever_catches_cycle_exception_and_continues(sample_config, caplog
     assert any("Monitoring cycle failed" in record.message for record in caplog.records)
 
 
+def test_run_forever_calls_pinger_ping_after_successful_cycle(sample_config, caplog):
+    """pinger.ping() is called once per successful cycle."""
+    import monitor
+    from monitor import run_forever
+
+    class StopLoop(BaseException):
+        pass
+
+    calls = {"n": 0}
+
+    def fake_run_cycle(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return  # success
+        raise StopLoop()
+
+    pinger = MagicMock()
+
+    original_run_cycle = monitor.run_cycle
+    original_sleep = monitor.time.sleep
+    monitor.run_cycle = fake_run_cycle
+    monitor.time.sleep = lambda _: None
+    try:
+        with pytest.raises(StopLoop):
+            run_forever(sample_config, provider=object(), alert_channel=object(), pinger=pinger)
+    finally:
+        monitor.run_cycle = original_run_cycle
+        monitor.time.sleep = original_sleep
+
+    assert pinger.ping.call_count == 1
+
+
+def test_run_forever_does_not_call_pinger_after_failed_cycle(sample_config, caplog):
+    """pinger.ping() is NOT called when run_cycle raises."""
+    import monitor
+    from monitor import run_forever
+
+    class StopLoop(BaseException):
+        pass
+
+    calls = {"n": 0}
+
+    def fake_run_cycle(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RuntimeError("cycle failed")
+        raise StopLoop()
+
+    pinger = MagicMock()
+
+    original_run_cycle = monitor.run_cycle
+    original_sleep = monitor.time.sleep
+    monitor.run_cycle = fake_run_cycle
+    monitor.time.sleep = lambda _: None
+    try:
+        with pytest.raises(StopLoop):
+            run_forever(sample_config, provider=object(), alert_channel=object(), pinger=pinger)
+    finally:
+        monitor.run_cycle = original_run_cycle
+        monitor.time.sleep = original_sleep
+
+    assert pinger.ping.call_count == 0
+
+
+def test_run_forever_sends_mom_alert_after_sustained_outage(sample_config, caplog):
+    """Mom channel receives exactly one alert after sustained_outage_minutes of failures."""
+    import dataclasses
+
+    import monitor
+    from config import HealthchecksConfig
+    from monitor import run_forever
+
+    class StopLoop(BaseException):
+        pass
+
+    # sustained_outage_minutes=0 means any outage duration triggers escalation immediately
+    config = dataclasses.replace(
+        sample_config,
+        healthchecks=HealthchecksConfig(sustained_outage_minutes=0),
+    )
+
+    calls = {"n": 0}
+
+    def fake_run_cycle(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] <= 2:
+            raise RuntimeError("sustained failure")
+        raise StopLoop()
+
+    mom_channel = _AlertChannelFake()
+
+    original_run_cycle = monitor.run_cycle
+    original_sleep = monitor.time.sleep
+    monitor.run_cycle = fake_run_cycle
+    monitor.time.sleep = lambda _: None
+    try:
+        with pytest.raises(StopLoop):
+            run_forever(
+                config,
+                provider=object(),
+                alert_channel=object(),
+                mom_channel=mom_channel,
+            )
+    finally:
+        monitor.run_cycle = original_run_cycle
+        monitor.time.sleep = original_sleep
+
+    assert len(mom_channel.alerts) == 1
+    assert mom_channel.alerts[0].alert_type == AlertType.SYSTEM
+    assert "offline" in mom_channel.alerts[0].message.lower()
+
+
+def test_run_forever_mom_alert_fires_only_once_per_outage(sample_config, caplog):
+    """Mom is not spammed — alert fires exactly once even for many subsequent failures."""
+    import dataclasses
+
+    import monitor
+    from config import HealthchecksConfig
+    from monitor import run_forever
+
+    class StopLoop(BaseException):
+        pass
+
+    config = dataclasses.replace(
+        sample_config,
+        healthchecks=HealthchecksConfig(sustained_outage_minutes=0),
+    )
+
+    calls = {"n": 0}
+
+    def fake_run_cycle(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] <= 4:
+            raise RuntimeError("sustained failure")
+        raise StopLoop()
+
+    mom_channel = _AlertChannelFake()
+
+    original_run_cycle = monitor.run_cycle
+    original_sleep = monitor.time.sleep
+    monitor.run_cycle = fake_run_cycle
+    monitor.time.sleep = lambda _: None
+    try:
+        with pytest.raises(StopLoop):
+            run_forever(
+                config,
+                provider=object(),
+                alert_channel=object(),
+                mom_channel=mom_channel,
+            )
+    finally:
+        monitor.run_cycle = original_run_cycle
+        monitor.time.sleep = original_sleep
+
+    assert len(mom_channel.alerts) == 1
+
+
+def test_run_forever_mom_alerted_resets_after_recovery(sample_config, caplog):
+    """After a successful cycle, mom_alerted resets so a future outage re-alerts."""
+    import dataclasses
+
+    import monitor
+    from config import HealthchecksConfig
+    from monitor import run_forever
+
+    class StopLoop(BaseException):
+        pass
+
+    config = dataclasses.replace(
+        sample_config,
+        healthchecks=HealthchecksConfig(sustained_outage_minutes=0),
+    )
+
+    calls = {"n": 0}
+
+    def fake_run_cycle(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RuntimeError("first outage")
+        if calls["n"] == 2:
+            return  # recovery — resets mom_alerted
+        if calls["n"] == 3:
+            raise RuntimeError("second outage")
+        raise StopLoop()
+
+    mom_channel = _AlertChannelFake()
+
+    original_run_cycle = monitor.run_cycle
+    original_sleep = monitor.time.sleep
+    monitor.run_cycle = fake_run_cycle
+    monitor.time.sleep = lambda _: None
+    try:
+        with pytest.raises(StopLoop):
+            run_forever(
+                config,
+                provider=object(),
+                alert_channel=object(),
+                mom_channel=mom_channel,
+            )
+    finally:
+        monitor.run_cycle = original_run_cycle
+        monitor.time.sleep = original_sleep
+
+    assert len(mom_channel.alerts) == 2
+
+
 def test_main_selects_lmstudio_provider_when_configured(tmp_path):
     """main() must instantiate LMStudioProvider when config.api.provider == 'lmstudio'."""
     import monitor
@@ -600,20 +806,29 @@ def test_run_cycle_high_unsafe_alert_includes_gallery_url_when_dashboard_url_set
     assert len(alert.url) > len("https://grandma.example.com/gallery#")
 
 
-def test_run_cycle_returns_true_when_save_image_true(
-    sample_config, tmp_path, fixture_frame_bytes
-):
+def test_run_cycle_returns_true_when_save_image_true(sample_config, tmp_path, fixture_frame_bytes):
     from monitor import run_cycle
 
     config = _app_config(sample_config, tmp_path)
     provider = _ProviderFake(
-        [_assessment(safe=True, confidence=Confidence.HIGH, reason="Safe.", patient_location=PatientLocation.IN_BED)]
+        [
+            _assessment(
+                safe=True,
+                confidence=Confidence.HIGH,
+                reason="Safe.",
+                patient_location=PatientLocation.IN_BED,
+            )
+        ]
     )
     state = _state(config)
 
     result = run_cycle(
-        config, provider, _AlertChannelFake(),
-        fetch_frame=lambda _: fixture_frame_bytes, save_image=True, **state,
+        config,
+        provider,
+        _AlertChannelFake(),
+        fetch_frame=lambda _: fixture_frame_bytes,
+        save_image=True,
+        **state,
     )
 
     assert result is True
@@ -627,13 +842,24 @@ def test_run_cycle_returns_false_when_save_image_false_and_no_alert(
 
     config = _app_config(sample_config, tmp_path)
     provider = _ProviderFake(
-        [_assessment(safe=True, confidence=Confidence.HIGH, reason="Safe.", patient_location=PatientLocation.IN_BED)]
+        [
+            _assessment(
+                safe=True,
+                confidence=Confidence.HIGH,
+                reason="Safe.",
+                patient_location=PatientLocation.IN_BED,
+            )
+        ]
     )
     state = _state(config)
 
     result = run_cycle(
-        config, provider, _AlertChannelFake(),
-        fetch_frame=lambda _: fixture_frame_bytes, save_image=False, **state,
+        config,
+        provider,
+        _AlertChannelFake(),
+        fetch_frame=lambda _: fixture_frame_bytes,
+        save_image=False,
+        **state,
     )
 
     assert result is False
@@ -647,14 +873,25 @@ def test_run_cycle_saves_image_when_alert_fires_even_if_save_image_false(
 
     config = _app_config(sample_config, tmp_path)
     provider = _ProviderFake(
-        [_assessment(safe=False, confidence=Confidence.HIGH, reason="Patient at risk.", patient_location=PatientLocation.IN_BED)]
+        [
+            _assessment(
+                safe=False,
+                confidence=Confidence.HIGH,
+                reason="Patient at risk.",
+                patient_location=PatientLocation.IN_BED,
+            )
+        ]
     )
     channel = _AlertChannelFake()
     state = _state(config)
 
     result = run_cycle(
-        config, provider, channel,
-        fetch_frame=lambda _: fixture_frame_bytes, save_image=False, **state,
+        config,
+        provider,
+        channel,
+        fetch_frame=lambda _: fixture_frame_bytes,
+        save_image=False,
+        **state,
     )
 
     assert result is True

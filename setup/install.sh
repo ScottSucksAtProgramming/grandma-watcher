@@ -56,6 +56,27 @@ install_service go2rtc
 install_service web_server
 install_service monitor
 
+# --- Healthchecks.io OS-level cron heartbeat ------------------------------------
+SYSTEM_PING_URL=$(python3 -c "
+import yaml, sys
+try:
+    c = yaml.safe_load(open('config.yaml'))
+    print((c.get('healthchecks') or {}).get('system_ping_url') or '')
+except Exception:
+    print('')
+")
+
+if [ -n "$SYSTEM_PING_URL" ]; then
+  PING_SCRIPT="$SCRIPT_DIR/healthcheck_ping.sh"
+  CRON_ENTRY="*/5 * * * * HEALTHCHECKS_SYSTEM_URL=${SYSTEM_PING_URL} ${PING_SCRIPT}"
+  # Add idempotently: remove any existing entry for healthcheck_ping.sh, then append
+  ( crontab -l -u "$SERVICE_USER" 2>/dev/null | grep -v "healthcheck_ping.sh"; echo "$CRON_ENTRY" ) \
+    | crontab -u "$SERVICE_USER" -
+  echo "Installed cron heartbeat: pings Healthchecks.io every 5 minutes."
+else
+  echo "healthchecks.system_ping_url not set — skipping cron heartbeat."
+fi
+
 echo ""
 echo "Setup complete."
 echo "Check logs:  journalctl -u grandma-monitor -f"

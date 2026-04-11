@@ -22,6 +22,19 @@ grandma-watcher:
 		- Integration test: full cycle with mocked camera, mocked OpenRouter, mocked Pushover @done
 		- Smoke test on Pi: verify real camera frame flows through and alert fires correctly @done
 
+	Milestone 3 - Production Hardening:
+		- Implement healthchecks.py (HealthchecksPinger — app-level ping after each successful cycle) @done
+		- Extend run_forever() to call pinger and track sustained outage duration @done
+		- Add Mom escalation alert after sustained_outage_minutes of missed pings @done
+		- Wire pinger and mom_channel into monitor.py main() @done
+		- Create setup/healthcheck_ping.sh (OS-level cron heartbeat script) @done
+		- Add cron entry for system heartbeat to setup/install.sh @done
+		- Write tests/test_healthchecks.py (unit tests for HealthchecksPinger) @done
+		- Extend test_monitor.py with pinger and escalation tests @done
+
+	Backlog:
+		- Lower MJPEG stream quality for slow connections (StreamConfig: stream_width/height/fps → passed as go2rtc params; frame.jpeg for AI unaffected)
+
 	Milestone 2 - Flask Dashboard:
 		- Implement web_server.py skeleton (Flask app, routes registered, systemd service runs) @done
 		- Implement /stream route (proxies go2rtc MJPEG stream to browser) @done
@@ -35,5 +48,5 @@ grandma-watcher:
 		- Build dashboard.css (mobile-first, large tap targets, readable on phone) @done
 		- Wire Pushover alert URL to dashboard frame (alert notification links to /gallery#<id>) @done
 		- Set up Cloudflare Tunnel (cloudflared as systemd service, tunnel token in config.yaml) @done
-		- Set up Cloudflare Access + Google OAuth (protect dashboard behind Mom's Google account) @na
-		- Smoke test dashboard on Pi: stream visible, gallery loads, silence toggles, label writes to log @na
+		- Set up Cloudflare Access + Google OAuth (protect dashboard behind Mom's Google account) @done
+		- Smoke test dashboard on Pi: stream visible, gallery loads, silence toggles, label writes to log @done

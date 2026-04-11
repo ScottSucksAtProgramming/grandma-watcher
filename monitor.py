@@ -20,8 +20,8 @@ from alert import (
 )
 from config import AppConfig, load_config
 from dataset import record_dataset_entry
+from healthchecks import HealthchecksPinger
 from lmstudio_provider import LMStudioProvider
-from nanogpt_provider import NanoGPTProvider
 from models import (
     Alert,
     AlertPriority,
@@ -30,6 +30,7 @@ from models import (
     DatasetEntry,
     SensorSnapshot,
 )
+from nanogpt_provider import NanoGPTProvider
 from openrouter_provider import OpenRouterProvider
 from prompt_builder import build_prompt
 from protocols import AlertChannel, VLMProvider
@@ -182,6 +183,8 @@ def run_forever(
     alert_channel: AlertChannel,
     *,
     builder_channel: AlertChannel | None = None,
+    pinger: HealthchecksPinger | None = None,
+    mom_channel: AlertChannel | None = None,
 ) -> None:
     """Run the monitor loop indefinitely, keeping per-loop state in memory."""
     window_counter = SlidingWindowCounter(config.alerts.window_size)
@@ -194,8 +197,11 @@ def run_forever(
 
     consecutive_failures = 0
     builder_alerted = False
+    mom_alerted = False
+    last_successful_ping_at: float = time.monotonic()
     last_image_saved_at: float = 0.0  # monotonic seconds; 0 = never saved
     image_interval_seconds = config.dataset.image_interval_minutes * 60
+    sustained_outage_seconds = config.healthchecks.sustained_outage_minutes * 60
 
     while True:
         try:
@@ -213,8 +219,12 @@ def run_forever(
             )
             if image_saved:
                 last_image_saved_at = time.monotonic()
+            if pinger is not None:
+                pinger.ping()
+            last_successful_ping_at = time.monotonic()
             consecutive_failures = 0
             builder_alerted = False
+            mom_alerted = False
         except Exception:
             logger.exception("Monitoring cycle failed")
             consecutive_failures += 1
@@ -234,6 +244,20 @@ def run_forever(
                     )
                 )
                 builder_alerted = True
+            outage_seconds = time.monotonic() - last_successful_ping_at
+            if (
+                outage_seconds >= sustained_outage_seconds
+                and not mom_alerted
+                and mom_channel is not None
+            ):
+                mom_channel.send(
+                    Alert(
+                        alert_type=AlertType.SYSTEM,
+                        priority=AlertPriority.NORMAL,
+                        message="Monitoring system is offline — please check on grandma directly.",
+                    )
+                )
+                mom_alerted = True
         time.sleep(config.monitor.interval_seconds)
 
 
@@ -263,7 +287,24 @@ def main() -> int:
             emergency_retry_seconds=config.alerts.pushover_emergency_retry_seconds,
             emergency_expire_seconds=config.alerts.pushover_emergency_expire_seconds,
         )
-    run_forever(config, provider, alert_channel, builder_channel=builder_channel)
+    pinger = HealthchecksPinger(config.healthchecks.app_ping_url)
+    mom_channel: AlertChannel | None = None
+    if config.healthchecks.mom_pushover_user_key:
+        mom_channel = PushoverChannel(
+            api_key=config.alerts.pushover_api_key,
+            user_key=config.healthchecks.mom_pushover_user_key,
+            high_priority=config.alerts.high_alert_pushover_priority,
+            emergency_retry_seconds=config.alerts.pushover_emergency_retry_seconds,
+            emergency_expire_seconds=config.alerts.pushover_emergency_expire_seconds,
+        )
+    run_forever(
+        config,
+        provider,
+        alert_channel,
+        builder_channel=builder_channel,
+        pinger=pinger,
+        mom_channel=mom_channel,
+    )
     return 0
 
 

@@ -19,6 +19,7 @@ grandma-watcher/
   Makefile
   config.yaml
   monitor.py
+  healthchecks.py
   web_server.py
   alert.py
   sensors.py
@@ -52,8 +53,10 @@ grandma-watcher/
     test_nanogpt_provider.py
     test_probe.py
     test_web_server.py
+    test_healthchecks.py
   setup/
     install.sh
+    healthcheck_ping.sh
     tailscale_setup.sh
     cloudflare_setup.sh
     apcupsd.conf
@@ -74,6 +77,8 @@ grandma-watcher/
     MOM_GUIDE.md
     INSTALL_GUIDE.md
     SENSOR_SETUP.md
+    token-usage-analysis.md
+    api_call_analysis.csv
     superpowers/
       specs/
         2026-04-08-models-protocols-design.md
@@ -120,8 +125,7 @@ After completing a task, log any corrections, preferences, patterns, or discover
 ### Recent Lessons (last 5)
 
 <!-- Claude maintains this as a quick-reference mirror of the most recent entries from context/lessons.md. -->
-2026-04-10: CSS `#modal-close` overriding `min-height: auto` from a base button rule breaks the 48px tap target — close buttons need explicit `min-height: var(--tap-height)` even when styled differently from other buttons.
-2026-04-10: `flashButton()` re-enables the button internally after the delay — a `finally` block that also re-enables is dead code (idempotent but misleading); only use `finally` for re-enable when there is no `flashButton` call in both branches.
 2026-04-10: `build_alert()` keyword-only args (`*`) keep the call site readable and prevent accidental positional mismatches when adding optional plumbing like `dashboard_url` and `timestamp` — frozen dataclass fields are picked up automatically by `_build_section` when added with a default.
 2026-04-11: NanoGPT API is OpenAI-compatible at https://nano-gpt.com/api/v1; new cloud providers need a *_provider.py, api key + base_url fields in ApiConfig, entry in _PROVIDER_REQUIRED_SECRETS, and an elif in monitor.main().
 2026-04-10: Cloudflare Tunnel setup — store the tunnel token in EnvironmentFile=/etc/grandma-watcher/cloudflare.env (mode 600) so it stays out of the service unit (which is checked into git); systemd reads EnvironmentFile as root before dropping to the service user, so root-owned 600 works fine.
+2026-04-11: When mocking `time.monotonic` in `run_forever` tests with a finite iterator, the iterator runs out because multiple monotonic calls occur per iteration (init + `now` + outage check + `last_successful_ping_at` on success) — use `sustained_outage_minutes=0` in the test config instead, which removes the need to mock time entirely.
