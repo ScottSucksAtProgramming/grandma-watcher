@@ -27,6 +27,53 @@ class LMStudioProvider:
         self._session = requests.Session()
         # No Authorization header — LM Studio is a local service
 
+    def load_model(self) -> None:
+        """Load the configured model in LM Studio.
+
+        Calls POST /api/v1/models/load. Safe to call when the model is already
+        loaded — LM Studio returns 409 which is silently accepted.
+
+        Raises:
+            requests.exceptions.ConnectionError: If LM Studio is not running.
+            requests.exceptions.Timeout: If the load request times out.
+            requests.exceptions.HTTPError: On unexpected 4xx/5xx response.
+        """
+        url = f"{self._config.lmstudio_base_url}/api/v1/models/load"
+        logger.info("Loading LM Studio model: %s", self._config.lmstudio_model)
+        try:
+            response = self._session.post(
+                url,
+                json={"model": self._config.lmstudio_model},
+                # Model loading is slow — use a generous read timeout
+                timeout=(self._config.timeout_connect_seconds, 120),
+            )
+        except requests.exceptions.ConnectionError:
+            logger.warning(
+                "LM Studio connection error during model load — is LM Studio running?",
+                exc_info=True,
+            )
+            raise
+        except requests.exceptions.Timeout:
+            logger.warning("LM Studio model load timed out")
+            raise
+
+        if response.status_code == 409:
+            logger.info("LM Studio model already loaded: %s", self._config.lmstudio_model)
+            return
+
+        try:
+            response.raise_for_status()
+        except requests.exceptions.HTTPError:
+            logger.warning("LM Studio model load failed: %s", response.text)
+            raise
+
+        data = response.json()
+        logger.info(
+            "LM Studio model loaded: %s (%.1fs)",
+            self._config.lmstudio_model,
+            data.get("load_time_seconds", 0),
+        )
+
     def assess(self, frame: bytes, prompt: str) -> AssessmentResult:
         """Assess a JPEG frame via LM Studio's OpenAI-compatible endpoint.
 

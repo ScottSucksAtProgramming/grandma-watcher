@@ -192,6 +192,87 @@ def test_assess_raises_on_vlm_parse_error(provider, fixture_frame_bytes):
             provider.assess(fixture_frame_bytes, "test prompt")
 
 
+def _make_load_response(status_code: int = 200, load_time: float = 5.0) -> Mock:
+    mock_resp = Mock()
+    mock_resp.status_code = status_code
+    mock_resp.raise_for_status = Mock()
+    mock_resp.json.return_value = {"load_time_seconds": load_time, "status": "loaded"}
+    mock_resp.text = ""
+    return mock_resp
+
+
+def test_load_model_posts_to_load_endpoint(provider, sample_config):
+    with patch(
+        "lmstudio_provider.requests.Session.post",
+        return_value=_make_load_response(),
+    ) as mock_post:
+        provider.load_model()
+    url = mock_post.call_args.args[0]
+    assert url == f"{sample_config.api.lmstudio_base_url}/api/v1/models/load"
+
+
+def test_load_model_sends_configured_model_name(provider, sample_config):
+    with patch(
+        "lmstudio_provider.requests.Session.post",
+        return_value=_make_load_response(),
+    ) as mock_post:
+        provider.load_model()
+    payload = mock_post.call_args.kwargs["json"]
+    assert payload["model"] == sample_config.api.lmstudio_model
+
+
+def test_load_model_uses_generous_read_timeout(provider, sample_config):
+    with patch(
+        "lmstudio_provider.requests.Session.post",
+        return_value=_make_load_response(),
+    ) as mock_post:
+        provider.load_model()
+    timeout = mock_post.call_args.kwargs["timeout"]
+    assert timeout[0] == sample_config.api.timeout_connect_seconds
+    assert timeout[1] == 120
+
+
+def test_load_model_accepts_409_already_loaded(provider):
+    mock_resp = _make_load_response(status_code=409)
+    with patch(
+        "lmstudio_provider.requests.Session.post",
+        return_value=mock_resp,
+    ):
+        provider.load_model()  # must not raise
+    mock_resp.raise_for_status.assert_not_called()
+
+
+def test_load_model_raises_on_connection_error(provider):
+    with patch(
+        "lmstudio_provider.requests.Session.post",
+        side_effect=requests.exceptions.ConnectionError("unreachable"),
+    ):
+        with pytest.raises(requests.exceptions.ConnectionError):
+            provider.load_model()
+
+
+def test_load_model_raises_on_timeout(provider):
+    with patch(
+        "lmstudio_provider.requests.Session.post",
+        side_effect=requests.exceptions.Timeout("timed out"),
+    ):
+        with pytest.raises(requests.exceptions.Timeout):
+            provider.load_model()
+
+
+def test_load_model_raises_on_http_error(provider):
+    mock_resp = _make_load_response(status_code=500)
+    mock_resp.raise_for_status.side_effect = requests.exceptions.HTTPError(
+        response=Mock(status_code=500)
+    )
+    with patch(
+        "lmstudio_provider.requests.Session.post",
+        return_value=mock_resp,
+    ):
+        with pytest.raises(requests.exceptions.HTTPError):
+            provider.load_model()
+
+
 def test_assess_logs_warning_on_http_error(provider, fixture_frame_bytes, caplog):
     mock_resp = Mock()
     mock_resp.raise_for_status.side_effect = requests.exceptions.HTTPError(

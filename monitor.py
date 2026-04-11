@@ -230,6 +230,7 @@ def main() -> int:
     config = load_config()
     if config.api.provider == "lmstudio":
         provider: VLMProvider = LMStudioProvider(config.api)
+        provider.load_model()
     else:
         provider = OpenRouterProvider(config.api)
     alert_channel = PushoverChannel(
