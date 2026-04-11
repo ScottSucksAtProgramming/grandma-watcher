@@ -1,6 +1,30 @@
 /* dashboard.js — grandma-watcher caregiver dashboard */
 "use strict";
 
+// ── Stream ─────────────────────────────────────────────────
+
+function reloadStream() {
+  const img = document.getElementById("stream-img");
+  if (!img) return;
+  // Cache-bust forces a new MJPEG connection
+  img.src = "/stream?" + Date.now();
+}
+
+function initStream() {
+  const img = document.getElementById("stream-img");
+  if (!img) return;
+
+  // Reconnect after stream drops (network error, server restart, etc.)
+  img.addEventListener("error", () => {
+    setTimeout(reloadStream, 3000);
+  });
+
+  // Reconnect when iOS/Android returns the page to the foreground
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") reloadStream();
+  });
+}
+
 // ── Theme ──────────────────────────────────────────────────
 
 function getEffectiveTheme() {
@@ -232,6 +256,7 @@ function initReportMissed() {
 // ── Init ───────────────────────────────────────────────────
 
 document.addEventListener("DOMContentLoaded", () => {
+  initStream();
   initTheme();
   initGallery();
   initSilence();
