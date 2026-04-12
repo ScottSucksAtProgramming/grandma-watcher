@@ -186,3 +186,48 @@ def test_dataset_entry_is_frozen():
     entry = _make_dataset_entry()
     with pytest.raises(dataclasses.FrozenInstanceError):
         entry.alert_fired = True  # type: ignore[misc]
+
+
+def test_dataset_entry_image_archived_defaults_to_false():
+    entry = DatasetEntry(
+        timestamp="2026-04-09T03:00:00Z",
+        image_path="images/test.jpg",
+        provider="nanogpt",
+        model="Qwen3 VL 235B A22B Instruct",
+        prompt_version="1.0",
+        sensor_snapshot=SensorSnapshot(load_cells_enabled=False, vitals_enabled=False),
+        response_raw="{}",
+        assessment=AssessmentResult(
+            safe=True,
+            confidence=Confidence.HIGH,
+            reason="ok",
+            patient_location=PatientLocation.IN_BED,
+        ),
+        alert_fired=False,
+        api_latency_ms=100.0,
+    )
+
+    assert entry.image_archived is False
+
+
+def test_dataset_entry_image_archived_can_be_set_true():
+    entry = DatasetEntry(
+        timestamp="2026-04-09T03:00:00Z",
+        image_path="images/test.jpg",
+        provider="nanogpt",
+        model="Qwen3 VL 235B A22B Instruct",
+        prompt_version="1.0",
+        sensor_snapshot=SensorSnapshot(load_cells_enabled=False, vitals_enabled=False),
+        response_raw="{}",
+        assessment=AssessmentResult(
+            safe=True,
+            confidence=Confidence.HIGH,
+            reason="ok",
+            patient_location=PatientLocation.IN_BED,
+        ),
+        alert_fired=False,
+        api_latency_ms=100.0,
+        image_archived=True,
+    )
+
+    assert entry.image_archived is True

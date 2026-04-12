@@ -105,4 +105,5 @@ class DatasetEntry:
     api_latency_ms: float
     silence_active: bool = False
     image_pruned: bool = False
+    image_archived: bool = False
     label: str = ""  # "correct" | "false_positive" | "false_negative" | ""
