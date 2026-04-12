@@ -38,6 +38,15 @@ from security import AccessTracker, StreamPauseState
 logger = logging.getLogger(__name__)
 
 
+def _client_ip() -> str:
+    """Return the real client IP, accounting for Cloudflare Tunnel proxying.
+
+    Cloudflare Tunnel forwards all traffic via localhost, so request.remote_addr
+    is always 127.0.0.1.  The real client IP is in the CF-Connecting-IP header.
+    """
+    return request.headers.get("CF-Connecting-IP") or request.remote_addr or ""
+
+
 def _log_checkin(event: str, checkin_log_file: str) -> None:
     """Append a caregiver check-in event to checkins.jsonl."""
     import datetime
@@ -48,7 +57,7 @@ def _log_checkin(event: str, checkin_log_file: str) -> None:
     entry = {
         "timestamp": datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "event": event,
-        "source_ip": _request.remote_addr or "",
+        "source_ip": _request.headers.get("CF-Connecting-IP") or _request.remote_addr or "",
     }
     with open(checkin_log_file, "a", encoding="utf-8") as f:
         f.write(json.dumps(entry) + "\n")
@@ -97,7 +106,7 @@ def create_app(config: AppConfig) -> Flask:
     @app.route("/")
     def index() -> str:
         """Serve the caregiver dashboard."""
-        ip = request.remote_addr or ""
+        ip = _client_ip()
         if access_tracker.check_and_record(ip):
             _notify_builder(f"Dashboard opened from {ip}")
         return render_template("dashboard.html", talk_url=config.web.talk_url)
@@ -274,7 +283,7 @@ def create_app(config: AppConfig) -> Flask:
         entry = {
             "timestamp": datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "event": "missed_alert_reported",
-            "source_ip": request.remote_addr or "",
+            "source_ip": _client_ip(),
         }
         checkin_log_file = config.dataset.checkin_log_file
         with open(checkin_log_file, "a", encoding="utf-8") as f:
