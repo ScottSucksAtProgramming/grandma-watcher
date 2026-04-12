@@ -8,7 +8,7 @@
 ![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue)
 ![Platform](https://img.shields.io/badge/Platform-Raspberry%20Pi%205-c51a4a)
 ![Camera](https://img.shields.io/badge/Camera-go2rtc-green)
-![VLM](https://img.shields.io/badge/VLM-Qwen3--VL--32B-orange)
+![VLM](https://img.shields.io/badge/VLM-Qwen3--VL--235B-orange)
 
 ---
 
@@ -24,7 +24,7 @@ Her daughter is the full-time live-in caregiver. This means constant vigilance: 
 
 ## How It Works
 
-Every 30 seconds, the system captures a frame from a ceiling-mounted NoIR camera and sends it to a vision language model (Qwen3-VL-32B via OpenRouter). The model assesses whether the patient appears safe, returning a structured JSON verdict: safe/unsafe, confidence level, and a brief reasoning string.
+Every 30 seconds, the system captures a frame from a ceiling-mounted NoIR camera and sends it to a vision language model (Qwen3 VL 235B A22B Instruct via NanoGPT). The model assesses whether the patient appears safe, returning a structured JSON verdict: safe/unsafe, confidence level, and a brief reasoning string.
 
 The alert engine applies a sliding window and cooldown logic to suppress noise before deciding whether to send a push notification to the caregiver's phone. False positives are logged and can be labeled from the dashboard.
 
@@ -33,7 +33,7 @@ graph TD
     CAM[NoIR Camera] --> G2R[go2rtc]
     G2R -->|snapshot every 30 s| MON[monitor.py]
     G2R -->|MJPEG stream| WEB[Flask Dashboard]
-    MON -->|image + prompt| VLM[Qwen3-VL-32B\nOpenRouter]
+    MON -->|image + prompt| VLM[Qwen3-VL-235B\nNanoGPT]
     VLM -->|JSON assessment| MON
     MON -->|sliding window + cooldown| ALT[alert.py]
     ALT -->|push notification| PO[Pushover → Phone]
@@ -123,7 +123,7 @@ graph TD
 | Layer | Technology |
 |---|---|
 | Camera streaming | [go2rtc](https://github.com/AlexxIT/go2rtc) — owns the CSI camera exclusively |
-| Vision AI | [Qwen3-VL-32B-Instruct](https://openrouter.ai/models/qwen/qwen3-vl-32b-instruct) via OpenRouter |
+| Vision AI | [Qwen3 VL 235B A22B Instruct](https://nano-gpt.com) via NanoGPT |
 | Alerts | [Pushover](https://pushover.net) |
 | Web dashboard | Python / Flask |
 | Remote access | [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) |
@@ -143,7 +143,7 @@ grandma-watcher/
   healthchecks.py     # Dead man's switch pinger and escalation logic
   prompt_builder.py   # Builds the VLM prompt from config + sensor data
   vlm_parser.py       # Parses raw VLM JSON → AssessmentResult (fail-safe)
-  openrouter_provider.py   # OpenRouter VLM adapter
+  nanogpt_provider.py      # NanoGPT VLM adapter
   config.py           # Typed configuration dataclasses
   config.yaml         # All settings and secrets (gitignored)
   go2rtc.yaml         # Camera and streaming configuration
@@ -171,9 +171,9 @@ See [`docs/INSTALL_GUIDE.md`](docs/INSTALL_GUIDE.md) for the full step-by-step w
 
 ```yaml
 api:
-  provider: openrouter
-  model: qwen/qwen3-vl-32b-instruct
-  openrouter_api_key: "sk-..."
+  provider: nanogpt
+  model: qwen3-vl-235b-a22b
+  nanogpt_api_key: "sk-..."
 
 monitor:
   interval_seconds: 30
@@ -216,7 +216,7 @@ Parkinson's tremors and repositioning movements look alarming in a single frame.
 
 ## A Note on Privacy
 
-All video footage stays on the local device. Frames are sent to the OpenRouter API for analysis but are never stored by this application on any external server. Push notifications contain a dashboard link only — no images are ever embedded in or attached to notifications.
+All video footage stays on the local device. Frames are sent to the NanoGPT API for analysis but are never stored by this application on any external server. Push notifications contain a dashboard link only — no images are ever embedded in or attached to notifications.
 
 The dataset (`dataset/images/`, `dataset/log.jsonl`) is stored locally on the Pi and never synced to any cloud service by default.
 
