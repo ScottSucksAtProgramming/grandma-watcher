@@ -188,10 +188,13 @@ alerts:
 
 ## Screenshots
 
-<p align="center"><img src="docs/images/dashboard.jpg" alt="Vigil dashboard on iPhone — live feed, silence button, talk button, and recent activity gallery with AI verdicts"></p>
-
-<p align="center"><img src="docs/images/alert.jpg" alt="Pushover time-sensitive alert — Grandma Please Check"></p>
-<p align="center"><img src="docs/images/gallery.jpg" alt="Gallery detail view with Real Issue and False Alarm labeling buttons"></p>
+<p align="center">
+  <img src="docs/images/dashboard.jpg" alt="Dashboard" width="45%">&nbsp;&nbsp;
+  <img src="docs/images/gallery.jpg" alt="Gallery with labeling buttons" width="45%">
+</p>
+<p align="center">
+  <img src="docs/images/alert.jpg" alt="Pushover alert notification" width="60%">
+</p>
 
 ---
 
