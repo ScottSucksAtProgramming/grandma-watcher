@@ -150,8 +150,8 @@ After completing a task, log any corrections, preferences, patterns, or discover
 ### Recent Lessons (last 5)
 
 <!-- Claude maintains this as a quick-reference mirror of the most recent entries from context/lessons.md. -->
-2026-04-12: Flask route functions must not share names with closure-scoped state objects — name route functions with a `_route` suffix (e.g. `stream_pause_route`) to avoid shadowing state variables like `stream_pause`.
 2026-04-12: When testing Flask routes that serve static files, override `app.static_folder = str(tmp_path)` in the fixture so tests write placeholder files to a temp directory and never touch the real `static/` folder.
 2026-04-12: Patch `web_server.PushoverChannel` (the constructor) before calling `create_app()` so the mock is captured in the closure; patching the instance method afterward misses the dependency already bound at factory time.
 2026-04-12: Injecting a `clock` callable into AccessTracker and StreamPauseState (defaulting to `time.monotonic`) keeps time-dependent tests deterministic without monkeypatching builtins — use a mutable list `fake_time = [0.0]` and `clock=lambda: fake_time[0]`.
 2026-04-12: AccessTracker._seen must use lowercased keys — normalize to `key = ip.lower()` before both `get` and `__setitem__` so case-variant IPs map to the same tracking slot.
+2026-04-12: Behind Cloudflare Tunnel, `request.remote_addr` is always `127.0.0.1` — read the real client IP from `CF-Connecting-IP` header instead; whitelist entries must be the public IP, not the LAN IP.
