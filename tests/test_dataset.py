@@ -146,3 +146,126 @@ def test_record_dataset_entry_skip_image_writes_log_only(
     payload = json.loads((tmp_path / "dataset" / "log.jsonl").read_text(encoding="utf-8"))
     assert payload["image_path"] == ""
     assert payload["assessment"]["reason"] == "Patient resting in bed."
+
+
+def test_read_log_returns_all_rows(sample_config, tmp_path):
+    from dataset import append_log_entry, read_log
+
+    config = _app_config(sample_config, tmp_path)
+    entry = _dataset_entry(
+        image_path="images/2026-04-09_03-00-00.jpg",
+        timestamp="2026-04-09T03:00:00Z",
+    )
+    append_log_entry(config, entry)
+
+    rows = read_log(config)
+
+    assert len(rows) == 1
+    assert rows[0]["timestamp"] == "2026-04-09T03:00:00Z"
+
+
+def test_read_log_returns_empty_list_for_missing_file(sample_config, tmp_path):
+    from dataset import read_log
+
+    config = _app_config(sample_config, tmp_path)
+
+    assert read_log(config) == []
+
+
+def test_rewrite_log_applies_transform_and_rewrites_file(sample_config, tmp_path):
+    from dataset import append_log_entry, rewrite_log
+
+    config = _app_config(sample_config, tmp_path)
+    entry = _dataset_entry(
+        image_path="images/2026-04-09_03-00-00.jpg",
+        timestamp="2026-04-09T03:00:00Z",
+    )
+    append_log_entry(config, entry)
+
+    def _mark_all_archived(rows):
+        for row in rows:
+            row["image_archived"] = True
+        return rows
+
+    rewrite_log(config, _mark_all_archived)
+
+    log_path = tmp_path / "dataset" / "log.jsonl"
+    payload = json.loads(log_path.read_text(encoding="utf-8"))
+    assert payload["image_archived"] is True
+
+
+def test_rewrite_log_handles_missing_log_file(sample_config, tmp_path):
+    from dataset import rewrite_log
+
+    config = _app_config(sample_config, tmp_path)
+
+    rewrite_log(config, lambda rows: rows)
+
+
+def test_rewrite_log_handles_empty_log_file(sample_config, tmp_path):
+    from dataset import rewrite_log
+
+    config = _app_config(sample_config, tmp_path)
+    log_path = tmp_path / "dataset" / "log.jsonl"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text("", encoding="utf-8")
+
+    rewrite_log(config, lambda rows: rows)
+
+
+def test_patch_log_entry_updates_matching_row_by_timestamp(sample_config, tmp_path):
+    from dataset import append_log_entry, patch_log_entry
+
+    config = _app_config(sample_config, tmp_path)
+    entry = _dataset_entry(
+        image_path="images/2026-04-09_03-00-00.jpg",
+        timestamp="2026-04-09T03:00:00Z",
+    )
+    append_log_entry(config, entry)
+
+    patch_log_entry(config, "2026-04-09T03:00:00Z", {"image_archived": True})
+
+    log_path = tmp_path / "dataset" / "log.jsonl"
+    payload = json.loads(log_path.read_text(encoding="utf-8"))
+    assert payload["image_archived"] is True
+
+
+def test_patch_log_entry_no_op_when_timestamp_not_found(sample_config, tmp_path):
+    from dataset import append_log_entry, patch_log_entry
+
+    config = _app_config(sample_config, tmp_path)
+    entry = _dataset_entry(
+        image_path="images/2026-04-09_03-00-00.jpg",
+        timestamp="2026-04-09T03:00:00Z",
+    )
+    append_log_entry(config, entry)
+
+    patch_log_entry(config, "1999-01-01T00:00:00Z", {"image_archived": True})
+
+    log_path = tmp_path / "dataset" / "log.jsonl"
+    payload = json.loads(log_path.read_text(encoding="utf-8"))
+    assert payload.get("image_archived", False) is False
+
+
+def test_patch_log_entry_preserves_other_rows(sample_config, tmp_path):
+    from dataset import append_log_entry, patch_log_entry
+
+    config = _app_config(sample_config, tmp_path)
+    entry1 = _dataset_entry(
+        image_path="images/2026-04-09_03-00-00.jpg",
+        timestamp="2026-04-09T03:00:00Z",
+    )
+    entry2 = _dataset_entry(
+        image_path="images/2026-04-09_03-00-30.jpg",
+        timestamp="2026-04-09T03:00:30Z",
+    )
+    append_log_entry(config, entry1)
+    append_log_entry(config, entry2)
+
+    patch_log_entry(config, "2026-04-09T03:00:00Z", {"image_archived": True})
+
+    log_path = tmp_path / "dataset" / "log.jsonl"
+    lines = log_path.read_text(encoding="utf-8").strip().splitlines()
+    assert len(lines) == 2
+    row2 = json.loads(lines[1])
+    assert row2.get("image_archived", False) is False
