@@ -9,6 +9,8 @@ updated: 2026-04-07
 
 <!-- Append dated one-liners below. When 3+ related lessons accumulate on a topic, extract into a dedicated context file. -->
 
+2026-04-12: If a Flask route builds a notification channel inside `create_app()`, patch the imported constructor on the web module before calling `create_app()`; patching the instance method afterward misses the closure-scoped dependency.
+
 2026-04-10: When adding side-effectful logging to existing Flask routes, all test fixtures that hit those routes must patch the new file path — not just fixtures created for the new feature. Update the shared `client` fixture and any inline test configs at the same time.
 
 2026-04-10: Flask route tests that rely on the default `client` fixture break as soon as the route writes to disk — any route doing real I/O needs a tmp_path fixture so file paths resolve in tests.
@@ -50,3 +52,7 @@ updated: 2026-04-07
 2026-04-11: When mocking `time.monotonic` in `run_forever` tests with a finite iterator, the iterator runs out because multiple monotonic calls occur per iteration (init + `now` + outage check + `last_successful_ping_at` on success) — use `sustained_outage_minutes=0` in the test config instead, which removes the need to mock time entirely.
 2026-04-11: NanoGPT API is OpenAI-compatible at https://nano-gpt.com/api/v1; adding a new cloud provider is just a new *_provider.py with a configurable base URL + api key field in ApiConfig + entry in _PROVIDER_REQUIRED_SECRETS + elif branch in monitor.main(). DeepSeek-R1 ("thinking") has no vision — use Qwen3.5-122B-A10B (model ID on NanoGPT TBD) or qwen/qwen3.5-122b-a10b on OpenRouter.
 2026-04-11: MJPEG streams can stall silently without firing an error event — add both exponential-backoff error retry (3s base, 60s max) and a periodic forced reconnect (setInterval every 5 min) as a stall safety net. WebRTC video would fix this properly but won't traverse Cloudflare Tunnel (UDP); defer until Mom is on Tailscale for both audio and video.
+2026-04-12: Flask route functions must not share names with closure-scoped state objects — name route functions with a `_route` suffix (e.g. `stream_pause_route`) to avoid shadowing `StreamPauseState` variables like `stream_pause`.
+2026-04-12: When testing Flask routes that serve static files, override `app.static_folder = str(tmp_path)` in the fixture so tests write placeholder files to a temp directory and never touch the real `static/` folder.
+2026-04-12: Patch `web_server.PushoverChannel` (the constructor) before calling `create_app()` so the mock is captured in the closure; patching the instance method afterward misses the dependency already bound at factory time.
+2026-04-12: Injecting a `clock` callable into AccessTracker and StreamPauseState (defaulting to `time.monotonic`) keeps time-dependent tests deterministic without monkeypatching builtins — use a mutable list `fake_time = [0.0]` and `clock=lambda: fake_time[0]` for controllable advancement.

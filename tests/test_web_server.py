@@ -1,6 +1,7 @@
 """Tests for web_server.py Flask app skeleton."""
 
 import dataclasses
+import datetime
 import json
 from unittest.mock import MagicMock, patch
 
@@ -70,6 +71,32 @@ def gallery_client(sample_config, tmp_path):
     app.config["TESTING"] = True
     with app.test_client() as c:
         yield c, log_file
+
+
+@pytest.fixture
+def security_client(sample_config, tmp_path):
+    """Client with builder notifications enabled and temp static placeholder."""
+    checkin_log_file = tmp_path / "checkins.jsonl"
+    patched_dataset = dataclasses.replace(
+        sample_config.dataset, checkin_log_file=str(checkin_log_file)
+    )
+    patched_alerts = dataclasses.replace(
+        sample_config.alerts,
+        pushover_builder_user_key="test-builder-key",
+    )
+    cfg = dataclasses.replace(
+        sample_config,
+        dataset=patched_dataset,
+        alerts=patched_alerts,
+    )
+    with patch("web_server.PushoverChannel") as MockChannel:
+        mock_instance = MockChannel.return_value
+        app = create_app(cfg)
+        app.static_folder = str(tmp_path)
+        (tmp_path / "stream_paused.jpg").write_bytes(b"\xff\xd8\xff\xd9")
+        app.config["TESTING"] = True
+        with app.test_client() as c:
+            yield c, mock_instance
 
 
 def test_gallery_route_returns_empty_list_initially(client):
@@ -440,7 +467,15 @@ def test_dashboard_route_returns_html_with_key_elements(client):
     response = client.get("/")
     assert response.status_code == 200
     body = response.data.decode()
-    for element_id in ("stream-img", "silence-btn", "gallery", "modal", "report-btn"):
+    for element_id in (
+        "stream-img",
+        "silence-btn",
+        "pause-stream-btn",
+        "stream-paused-banner",
+        "gallery",
+        "modal",
+        "report-btn",
+    ):
         assert element_id in body
 
 
@@ -493,3 +528,145 @@ def test_images_route_returns_404_for_missing_file(sample_config, tmp_path):
     with app.test_client() as c:
         response = c.get("/images/nonexistent.jpg")
     assert response.status_code == 404
+
+
+def test_stream_status_returns_not_paused_initially(security_client):
+    client, _ = security_client
+
+    response = client.get("/stream/status")
+
+    assert response.status_code == 200
+    assert response.get_json() == {"paused": False, "paused_since": None}
+
+
+def test_stream_pause_sets_paused_state(security_client):
+    client, _ = security_client
+
+    pause_response = client.post("/stream/pause")
+    status_response = client.get("/stream/status")
+
+    assert pause_response.status_code == 200
+    assert pause_response.get_json() == {"status": "ok", "changed": True}
+    assert status_response.get_json()["paused"] is True
+
+
+def test_stream_resume_clears_paused_state(security_client):
+    client, _ = security_client
+    client.post("/stream/pause")
+
+    resume_response = client.post("/stream/resume")
+    status_response = client.get("/stream/status")
+
+    assert resume_response.status_code == 200
+    assert resume_response.get_json() == {"status": "ok", "changed": True}
+    assert status_response.get_json() == {"paused": False, "paused_since": None}
+
+
+def test_stream_pause_idempotent_returns_changed_false(security_client):
+    client, _ = security_client
+    client.post("/stream/pause")
+
+    response = client.post("/stream/pause")
+
+    assert response.status_code == 200
+    assert response.get_json() == {"status": "ok", "changed": False}
+
+
+def test_stream_resume_idempotent_returns_changed_false(security_client):
+    client, _ = security_client
+
+    response = client.post("/stream/resume")
+
+    assert response.status_code == 200
+    assert response.get_json() == {"status": "ok", "changed": False}
+
+
+def test_stream_status_includes_paused_since_iso(security_client):
+    client, _ = security_client
+    client.post("/stream/pause")
+
+    response = client.get("/stream/status")
+
+    paused_since = response.get_json()["paused_since"]
+    assert paused_since is not None
+    assert datetime.datetime.fromisoformat(paused_since).tzinfo == datetime.UTC
+
+
+def test_stream_serves_placeholder_when_paused(security_client):
+    client, _ = security_client
+    client.post("/stream/pause")
+
+    response = client.get("/stream")
+
+    assert response.status_code == 200
+    assert response.data == b"\xff\xd8\xff\xd9"
+    assert response.mimetype == "image/jpeg"
+
+
+def test_stream_proxies_mjpeg_when_not_paused(security_client):
+    client, _ = security_client
+    mock_upstream = MagicMock()
+    mock_upstream.headers = {"Content-Type": "multipart/x-mixed-replace; boundary=frame"}
+    mock_upstream.iter_content.return_value = iter([b"--frame\r\n", b"data"])
+
+    with patch("web_server.requests.get", return_value=mock_upstream):
+        response = client.get("/stream")
+
+    assert response.status_code == 200
+    assert "multipart/x-mixed-replace" in response.content_type
+
+
+def test_dashboard_access_fires_builder_notification(security_client):
+    client, mock_channel = security_client
+
+    response = client.get("/", environ_overrides={"REMOTE_ADDR": "1.2.3.4"})
+
+    assert response.status_code == 200
+    mock_channel.send.assert_called_once()
+    assert "Dashboard opened from 1.2.3.4" in mock_channel.send.call_args.args[0].message
+
+
+def test_dashboard_access_same_ip_within_window_no_duplicate(security_client):
+    client, mock_channel = security_client
+
+    client.get("/", environ_overrides={"REMOTE_ADDR": "1.2.3.4"})
+    client.get("/", environ_overrides={"REMOTE_ADDR": "1.2.3.4"})
+
+    mock_channel.send.assert_called_once()
+
+
+def test_pause_fires_builder_notification(security_client):
+    client, mock_channel = security_client
+
+    response = client.post("/stream/pause")
+
+    assert response.status_code == 200
+    assert mock_channel.send.call_args.args[0].message == "Stream paused via dashboard"
+
+
+def test_resume_fires_builder_notification(security_client):
+    client, mock_channel = security_client
+    client.post("/stream/pause")
+    mock_channel.send.reset_mock()
+
+    response = client.post("/stream/resume")
+
+    assert response.status_code == 200
+    assert mock_channel.send.call_args.args[0].message == "Stream resumed via dashboard"
+
+
+def test_no_builder_notification_when_key_absent(sample_config, tmp_path):
+    checkin_log_file = tmp_path / "checkins.jsonl"
+    patched_dataset = dataclasses.replace(
+        sample_config.dataset, checkin_log_file=str(checkin_log_file)
+    )
+    cfg = dataclasses.replace(sample_config, dataset=patched_dataset)
+
+    with patch("web_server.PushoverChannel") as MockChannel:
+        app = create_app(cfg)
+        app.config["TESTING"] = True
+        with app.test_client() as client:
+            response = client.get("/", environ_overrides={"REMOTE_ADDR": "1.2.3.4"})
+
+    assert response.status_code == 200
+    MockChannel.assert_not_called()

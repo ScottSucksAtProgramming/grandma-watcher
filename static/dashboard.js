@@ -6,6 +6,7 @@
 const STREAM_RECONNECT_BASE_MS = 3_000;
 const STREAM_RECONNECT_MAX_MS = 60_000;
 const STREAM_PERIODIC_MS = 5 * 60 * 1_000; // periodic stall safety net
+const STREAM_PAUSE_POLL_MS = 30_000;
 
 let _streamReconnectDelay = STREAM_RECONNECT_BASE_MS;
 let _streamReconnectTimer = null;
@@ -46,6 +47,56 @@ function initStream() {
 
   // Periodic forced reconnect — catches silent MJPEG stalls
   setInterval(reloadStream, STREAM_PERIODIC_MS);
+}
+
+function updateStreamPauseUI(data) {
+  const banner = document.getElementById("stream-paused-banner");
+  const btn = document.getElementById("pause-stream-btn");
+  const img = document.getElementById("stream-img");
+  if (!banner || !btn || !img) return;
+
+  if (data.paused) {
+    banner.removeAttribute("hidden");
+    btn.textContent = "Resume Stream";
+    if (!img.src.includes("stream_paused.jpg")) {
+      img.src = "/static/stream_paused.jpg";
+    }
+    return;
+  }
+
+  banner.setAttribute("hidden", "");
+  btn.textContent = "Pause Stream";
+  if (img.src.includes("stream_paused.jpg")) {
+    reloadStream();
+  }
+}
+
+function pollStreamStatus() {
+  fetch("/stream/status")
+    .then((r) => r.json())
+    .then(updateStreamPauseUI)
+    .catch(() => {});
+}
+
+function initStreamPause() {
+  pollStreamStatus();
+  setInterval(pollStreamStatus, STREAM_PAUSE_POLL_MS);
+
+  const btn = document.getElementById("pause-stream-btn");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    btn.disabled = true;
+    const action = btn.textContent.includes("Pause") ? "pause" : "resume";
+    fetch(`/stream/${action}`, { method: "POST" })
+      .then((r) => r.json())
+      .then(() => pollStreamStatus())
+      .catch(() => {})
+      .finally(() => {
+        setTimeout(() => {
+          btn.disabled = false;
+        }, 1000);
+      });
+  });
 }
 
 // ── Theme ──────────────────────────────────────────────────
@@ -280,6 +331,7 @@ function initReportMissed() {
 
 document.addEventListener("DOMContentLoaded", () => {
   initStream();
+  initStreamPause();
   initTheme();
   initGallery();
   initSilence();

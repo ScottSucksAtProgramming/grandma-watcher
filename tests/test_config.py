@@ -17,6 +17,7 @@ from config import (
     HealthchecksConfig,
     MonitorConfig,
     RetentionConfig,
+    SecurityConfig,
     SensorNodeConfig,
     SensorsConfig,
     StreamConfig,
@@ -69,6 +70,7 @@ def test_appconfig_dataclass_fields():
         MonitorConfig,
         HealthchecksConfig,
         AlertsConfig,
+        SecurityConfig,
         StreamConfig,
         WebConfig,
         CloudflareConfig,
@@ -81,6 +83,7 @@ def test_appconfig_dataclass_fields():
     required = {"api", "monitor", "alerts"}
     optional = {
         "healthchecks",
+        "security",
         "dataset",
         "stream",
         "web",
@@ -100,6 +103,7 @@ def test_example_file_structurally_valid():
     _build_section(raw, "api", ApiConfig)
     _build_section(raw, "monitor", MonitorConfig)
     _build_section(raw, "alerts", AlertsConfig)
+    _build_section(raw, "security", SecurityConfig)
     _build_dataset(raw)
     _build_sensors(raw)
 

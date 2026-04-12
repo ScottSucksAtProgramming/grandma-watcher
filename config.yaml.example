@@ -128,6 +128,17 @@ dataset:
     # All other safe frames (days)
     safe_unsample_frames_days: 7
 
+# --- Security -------------------------------------------------------------------
+security:
+  # Auto-resume the dashboard video stream after this many hours when paused
+  stream_pause_auto_resume_hours: 4.0
+
+  # Repeat dashboard access notifications after this many minutes per source IP
+  access_notification_window_minutes: 15
+
+  # IPs that never trigger dashboard access notifications
+  access_notification_ip_whitelist: []
+
 # --- Streaming (go2rtc) ---------------------------------------------------------
 # Camera source and stream config live in go2rtc.yaml - not here.
 stream:

@@ -3,6 +3,9 @@
 Routes:
     GET  /               Serve caregiver dashboard HTML.
     GET  /stream         Proxy go2rtc MJPEG stream to browser.
+    POST /stream/pause   Pause the MJPEG stream.
+    POST /stream/resume  Resume the MJPEG stream.
+    GET  /stream/status  Return current stream pause status.
     GET  /gallery        Recent log entries with image paths and assessment data.
     GET  /silence        Return current silence status.
     POST /silence        Activate silence for N minutes.
@@ -27,7 +30,10 @@ from flask import (
     stream_with_context,
 )
 
+from alert import PushoverChannel
 from config import AppConfig, load_config
+from models import Alert, AlertPriority, AlertType
+from security import AccessTracker, StreamPauseState
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +60,35 @@ def create_app(config: AppConfig) -> Flask:
 
     # In-process silence state: (end_time_or_None)
     silence: dict[str, float | None] = {"until": None}
+    _builder_channel: PushoverChannel | None = None
+    if config.alerts.pushover_api_key and config.alerts.pushover_builder_user_key:
+        _builder_channel = PushoverChannel(
+            api_key=config.alerts.pushover_api_key,
+            user_key=config.alerts.pushover_builder_user_key,
+        )
+
+    access_tracker = AccessTracker(
+        window_seconds=config.security.access_notification_window_minutes * 60,
+        whitelist=config.security.access_notification_ip_whitelist,
+    )
+    stream_pause = StreamPauseState(
+        auto_resume_seconds=config.security.stream_pause_auto_resume_hours * 3600,
+    )
+
+    def _notify_builder(message: str) -> None:
+        """Best-effort Pushover notification to the builder."""
+        if _builder_channel is None:
+            return
+        try:
+            _builder_channel.send(
+                Alert(
+                    alert_type=AlertType.SYSTEM,
+                    priority=AlertPriority.NORMAL,
+                    message=message,
+                )
+            )
+        except Exception:
+            logger.warning("Failed to send builder notification", exc_info=True)
 
     # ------------------------------------------------------------------
     # / — dashboard HTML
@@ -62,6 +97,9 @@ def create_app(config: AppConfig) -> Flask:
     @app.route("/")
     def index() -> str:
         """Serve the caregiver dashboard."""
+        ip = request.remote_addr or ""
+        if access_tracker.check_and_record(ip):
+            _notify_builder(f"Dashboard opened from {ip}")
         return render_template("dashboard.html", talk_url=config.web.talk_url)
 
     # ------------------------------------------------------------------
@@ -72,6 +110,13 @@ def create_app(config: AppConfig) -> Flask:
     def stream() -> Response:
         """Proxy the go2rtc MJPEG stream to the browser."""
         _log_checkin("stream_opened", config.dataset.checkin_log_file)
+        stream_pause.check_and_auto_resume()
+        if stream_pause.is_paused:
+            return send_from_directory(
+                app.static_folder,
+                "stream_paused.jpg",
+                mimetype="image/jpeg",
+            )
         go2rtc_url = (
             f"http://localhost:{config.stream.go2rtc_api_port}"
             f"/api/stream.mjpeg?src={config.stream.stream_name}"
@@ -89,6 +134,34 @@ def create_app(config: AppConfig) -> Flask:
         return Response(
             stream_with_context(generate()),
             content_type=upstream.headers.get("Content-Type", "multipart/x-mixed-replace"),
+        )
+
+    @app.route("/stream/pause", methods=["POST"])
+    def stream_pause_route() -> Response:
+        """Pause the MJPEG stream."""
+        changed = stream_pause.pause()
+        if changed:
+            _notify_builder("Stream paused via dashboard")
+        return jsonify({"status": "ok", "changed": changed})
+
+    @app.route("/stream/resume", methods=["POST"])
+    def stream_resume_route() -> Response:
+        """Resume the MJPEG stream."""
+        changed = stream_pause.resume()
+        if changed:
+            _notify_builder("Stream resumed via dashboard")
+        return jsonify({"status": "ok", "changed": changed})
+
+    @app.route("/stream/status")
+    def stream_status_route() -> Response:
+        """Return current stream pause status."""
+        stream_pause.check_and_auto_resume()
+        paused_at = stream_pause.paused_at
+        return jsonify(
+            {
+                "paused": stream_pause.is_paused,
+                "paused_since": paused_at.isoformat() if paused_at else None,
+            }
         )
 
     # ------------------------------------------------------------------

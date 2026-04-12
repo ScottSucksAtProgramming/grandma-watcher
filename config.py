@@ -103,6 +103,13 @@ class AlertsConfig:
 
 
 @dataclass(frozen=True)
+class SecurityConfig:
+    stream_pause_auto_resume_hours: float = 4.0
+    access_notification_window_minutes: int = 15
+    access_notification_ip_whitelist: list[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
 class StreamConfig:
     go2rtc_api_port: int = 1984
     snapshot_url: str = "http://localhost:1984/api/frame.jpeg?src=grandma"
@@ -141,6 +148,7 @@ class AppConfig:
     alerts: AlertsConfig
     # Optional sections - sensible defaults if omitted
     healthchecks: HealthchecksConfig = field(default_factory=HealthchecksConfig)
+    security: SecurityConfig = field(default_factory=SecurityConfig)
     dataset: DatasetConfig = field(default_factory=DatasetConfig)
     stream: StreamConfig = field(default_factory=StreamConfig)
     web: WebConfig = field(default_factory=WebConfig)
@@ -156,6 +164,7 @@ _KNOWN_TOP_LEVEL_KEYS = frozenset(
         "monitor",
         "alerts",
         "healthchecks",
+        "security",
         "dataset",
         "stream",
         "web",
@@ -257,6 +266,7 @@ def load_config(path: str = "config.yaml") -> AppConfig:
         monitor=_build_section(raw, "monitor", MonitorConfig),
         alerts=_build_section(raw, "alerts", AlertsConfig),
         healthchecks=_build_section(raw, "healthchecks", HealthchecksConfig),
+        security=_build_section(raw, "security", SecurityConfig),
         dataset=_build_dataset(raw),
         stream=_build_section(raw, "stream", StreamConfig),
         web=_build_section(raw, "web", WebConfig),

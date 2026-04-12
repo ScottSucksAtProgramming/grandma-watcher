@@ -19,6 +19,7 @@ vigil/
   pyproject.toml
   Makefile
   config.yaml
+  security.py
   monitor.py
   healthchecks.py
   web_server.py
@@ -53,7 +54,7 @@ vigil/
     test_lmstudio_provider.py
     test_nanogpt_provider.py
     test_probe.py
-    test_web_server.py
+    test_security.py
     test_healthchecks.py
   setup/
     install.sh
@@ -71,6 +72,7 @@ vigil/
   static/
     dashboard.js
     dashboard.css
+    stream_paused.jpg
   dataset/
     images/
     log.jsonl
@@ -148,8 +150,8 @@ After completing a task, log any corrections, preferences, patterns, or discover
 ### Recent Lessons (last 5)
 
 <!-- Claude maintains this as a quick-reference mirror of the most recent entries from context/lessons.md. -->
-2026-04-10: Cloudflare Tunnel setup — store the tunnel token in EnvironmentFile=/etc/vigil/cloudflare.env (mode 600) so it stays out of the service unit (which is checked into git); systemd reads EnvironmentFile as root before dropping to the service user, so root-owned 600 works fine.
-2026-04-11: When mocking `time.monotonic` in `run_forever` tests with a finite iterator, the iterator runs out because multiple monotonic calls occur per iteration — use `sustained_outage_minutes=0` in the test config instead, which removes the need to mock time entirely.
-2026-04-11: `crontab -u <user>` in install.sh requires root and writes to a named user's crontab — use `sudo -u "$SERVICE_USER" crontab` instead so the entry lands in the correct user's crontab rather than root's.
-2026-04-11: NanoGPT API is OpenAI-compatible at https://nano-gpt.com/api/v1; new cloud providers need a *_provider.py, api key + base_url fields in ApiConfig, entry in _PROVIDER_REQUIRED_SECRETS, and an elif in monitor.main().
-2026-04-11: MJPEG streams can stall silently without firing an error event — add exponential-backoff error retry (3s base, 60s max) and a periodic forced reconnect (setInterval every 5 min) as a stall safety net. WebRTC video would fix this properly but won't traverse Cloudflare Tunnel (UDP).
+2026-04-12: Flask route functions must not share names with closure-scoped state objects — name route functions with a `_route` suffix (e.g. `stream_pause_route`) to avoid shadowing state variables like `stream_pause`.
+2026-04-12: When testing Flask routes that serve static files, override `app.static_folder = str(tmp_path)` in the fixture so tests write placeholder files to a temp directory and never touch the real `static/` folder.
+2026-04-12: Patch `web_server.PushoverChannel` (the constructor) before calling `create_app()` so the mock is captured in the closure; patching the instance method afterward misses the dependency already bound at factory time.
+2026-04-12: Injecting a `clock` callable into AccessTracker and StreamPauseState (defaulting to `time.monotonic`) keeps time-dependent tests deterministic without monkeypatching builtins — use a mutable list `fake_time = [0.0]` and `clock=lambda: fake_time[0]`.
+2026-04-12: AccessTracker._seen must use lowercased keys — normalize to `key = ip.lower()` before both `get` and `__setitem__` so case-variant IPs map to the same tracking slot.

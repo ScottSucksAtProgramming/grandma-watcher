@@ -16,10 +16,12 @@
     </div>
   </header>
 
+  <div id="stream-paused-banner" hidden>Stream paused</div>
   <img id="stream-img" src="/stream" alt="Live camera feed">
 
   <section id="controls">
     <button id="silence-btn" type="button">🔕 Silence 30 min</button>
+    <button id="pause-stream-btn" type="button">Pause Stream</button>
     {% if talk_url %}
       <a id="talk-btn" href="{{ talk_url }}" target="_blank" rel="noopener">🎙 Talk</a>
     {% else %}
