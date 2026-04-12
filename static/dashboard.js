@@ -149,6 +149,13 @@ function renderLabelTag(label) {
 }
 
 function buildCard(entry) {
+  const archived = Boolean(entry.image_archived);
+  const imgSrc = archived
+    ? "/static/archived_placeholder.jpg"
+    : `/${entry.image_path}`;
+  const archivedBadge = archived
+    ? '<span class="badge-archived">🔒 Archived</span>'
+    : "";
   const safeClass = entry.assessment.safe ? "badge-safe" : "badge-alert";
   const safeText = entry.assessment.safe ? "✓ Safe" : "✗ Unsafe";
   const alertBadge = entry.alert_fired
@@ -156,7 +163,7 @@ function buildCard(entry) {
     : "";
   return `
     <div class="gallery-card" data-id="${entry.timestamp}">
-      <img src="/${entry.image_path}" alt="Frame ${formatTimestamp(
+      <img src="${imgSrc}" alt="Frame ${formatTimestamp(
         entry.timestamp,
       )}" loading="lazy">
       <div class="gallery-card-body">
@@ -164,6 +171,7 @@ function buildCard(entry) {
           <span class="${safeClass}">${safeText}</span>
           <span class="badge-conf">${entry.assessment.confidence}</span>
           ${alertBadge}
+          ${archivedBadge}
           <span class="badge-time">${formatTimestamp(entry.timestamp)}</span>
         </div>
         <p class="gallery-card-reason">${entry.assessment.reason}</p>
@@ -243,9 +251,20 @@ let currentEntryId = null;
 
 function openModal(entry) {
   currentEntryId = entry.timestamp;
-  document.getElementById("modal-img").src = `/${entry.image_path}`;
-  document.getElementById("modal-reason").textContent =
-    entry.assessment.reason;
+  const archived = Boolean(entry.image_archived);
+  const imgSrc = archived
+    ? "/static/archived_placeholder.jpg"
+    : `/${entry.image_path}`;
+  document.getElementById("modal-img").src = imgSrc;
+  document.getElementById("modal-reason").textContent = entry.assessment.reason;
+  const notice = document.getElementById("modal-archived-notice");
+  if (notice) {
+    if (archived) {
+      notice.removeAttribute("hidden");
+    } else {
+      notice.setAttribute("hidden", "");
+    }
+  }
   document.getElementById("modal").removeAttribute("hidden");
 }
 
