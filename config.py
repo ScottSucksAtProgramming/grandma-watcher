@@ -30,6 +30,7 @@ class DatasetConfig:
     images_dir: str = ""  # derived from base_dir by _build_dataset if empty
     log_file: str = ""  # derived from base_dir by _build_dataset if empty
     checkin_log_file: str = ""  # derived from base_dir by _build_dataset if empty
+    archive_dir: str = ""  # derived from base_dir by _build_dataset if empty
     max_disk_gb: int = 50
     # Save an image every N minutes during normal operation.
     # Alert-triggering frames are always saved regardless of this interval.
@@ -107,6 +108,10 @@ class SecurityConfig:
     stream_pause_auto_resume_hours: float = 4.0
     access_notification_window_minutes: int = 15
     access_notification_ip_whitelist: list[str] = field(default_factory=list)
+    archive_after_hours: float = 24.0
+    age_public_key: str = ""
+    nas_sync_enabled: bool = False
+    nas_rsync_target: str = ""
 
 
 @dataclass(frozen=True)
@@ -207,7 +212,9 @@ def _build_dataset(raw: dict[str, Any]) -> DatasetConfig:
     images_dir = str(section.get("images_dir") or f"{base_dir}/images")
     log_file = str(section.get("log_file") or f"{base_dir}/log.jsonl")
     checkin_log_file = str(section.get("checkin_log_file") or f"{base_dir}/checkins.jsonl")
+    archive_dir = str(section.get("archive_dir") or f"{base_dir}/archive")
     max_disk_gb = int(section.get("max_disk_gb", 50))
+    image_interval_minutes = int(section.get("image_interval_minutes", 5))
     retention_raw = section.get("retention", {}) or {}
     retention = _build_section({"retention": retention_raw}, "retention", RetentionConfig)
     return DatasetConfig(
@@ -215,7 +222,9 @@ def _build_dataset(raw: dict[str, Any]) -> DatasetConfig:
         images_dir=images_dir,
         log_file=log_file,
         checkin_log_file=checkin_log_file,
+        archive_dir=archive_dir,
         max_disk_gb=max_disk_gb,
+        image_interval_minutes=image_interval_minutes,
         retention=retention,
     )
 
@@ -281,5 +290,9 @@ def load_config(path: str = "config.yaml") -> AppConfig:
     missing = [name for name, getter in secrets_to_check if not getter(config)]
     if missing:
         raise ValueError(f"Missing required config keys: {', '.join(missing)}")
+    if config.security.nas_sync_enabled and not config.security.nas_rsync_target:
+        raise ValueError(
+            "Config: security.nas_sync_enabled is True but security.nas_rsync_target is empty"
+        )
 
     return config

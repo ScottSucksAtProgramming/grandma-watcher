@@ -248,3 +248,68 @@ alerts:
     )
     with pytest.raises(ValueError, match="api.openrouter_api_key"):
         load_config(str(cfg_path))
+
+
+def test_security_config_archival_fields_have_correct_defaults():
+    cfg = SecurityConfig()
+
+    assert cfg.archive_after_hours == 24.0
+    assert cfg.age_public_key == ""
+    assert cfg.nas_sync_enabled is False
+    assert cfg.nas_rsync_target == ""
+
+
+def test_dataset_config_archive_dir_derived_from_base_dir(tmp_path):
+    raw = {"dataset": {"base_dir": str(tmp_path / "ds")}}
+
+    cfg = _build_dataset(raw)
+
+    assert cfg.archive_dir == str(tmp_path / "ds" / "archive")
+
+
+def test_dataset_config_archive_dir_explicit_overrides_default(tmp_path):
+    raw = {"dataset": {"base_dir": str(tmp_path), "archive_dir": "/custom/archive"}}
+
+    cfg = _build_dataset(raw)
+
+    assert cfg.archive_dir == "/custom/archive"
+
+
+def test_image_interval_minutes_yaml_override_is_respected(tmp_path):
+    raw = {"dataset": {"base_dir": str(tmp_path), "image_interval_minutes": 10}}
+
+    cfg = _build_dataset(raw)
+
+    assert cfg.image_interval_minutes == 10
+
+
+def test_load_config_rejects_nas_sync_enabled_without_target(tmp_path):
+    cfg_dict = {
+        "api": {"provider": "nanogpt", "nanogpt_api_key": "x"},
+        "monitor": {"interval_seconds": 30},
+        "alerts": {"pushover_api_key": "x", "pushover_user_key": "x"},
+        "security": {"nas_sync_enabled": True, "nas_rsync_target": ""},
+    }
+    path = tmp_path / "config.yaml"
+    path.write_text(yaml.dump(cfg_dict))
+
+    with pytest.raises(ValueError, match="nas_rsync_target"):
+        load_config(str(path))
+
+
+def test_load_config_accepts_nas_sync_enabled_with_target(tmp_path):
+    cfg_dict = {
+        "api": {"provider": "nanogpt", "nanogpt_api_key": "x"},
+        "monitor": {"interval_seconds": 30},
+        "alerts": {"pushover_api_key": "x", "pushover_user_key": "x"},
+        "security": {
+            "nas_sync_enabled": True,
+            "nas_rsync_target": "vigil-sync@100.1.2.3:/mnt/pool",
+        },
+    }
+    path = tmp_path / "config.yaml"
+    path.write_text(yaml.dump(cfg_dict))
+
+    config = load_config(str(path))
+
+    assert config.security.nas_sync_enabled is True
