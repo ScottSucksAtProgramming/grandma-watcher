@@ -9,6 +9,8 @@ updated: 2026-04-07
 
 <!-- Append dated one-liners below. When 3+ related lessons accumulate on a topic, extract into a dedicated context file. -->
 
+2026-04-12: Shared JSONL readers need a missing-directory fast path before opening the `.lock` sidecar — for read-only routes like `/gallery`, return `[]` when the dataset directory is absent instead of trying to `mkdir` under `/home/pi`.
+
 2026-04-12: If a Flask route builds a notification channel inside `create_app()`, patch the imported constructor on the web module before calling `create_app()`; patching the instance method afterward misses the closure-scoped dependency.
 
 2026-04-10: When adding side-effectful logging to existing Flask routes, all test fixtures that hit those routes must patch the new file path — not just fixtures created for the new feature. Update the shared `client` fixture and any inline test configs at the same time.

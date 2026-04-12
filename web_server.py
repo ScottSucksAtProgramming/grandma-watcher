@@ -32,7 +32,7 @@ from flask import (
 
 from alert import PushoverChannel
 from config import AppConfig, load_config
-from dataset import patch_log_entry
+from dataset import patch_log_entry, read_log
 from models import Alert, AlertPriority, AlertType
 from security import AccessTracker, StreamPauseState
 
@@ -182,26 +182,9 @@ def create_app(config: AppConfig) -> Flask:
     def gallery() -> Response:
         """Return the last N log entries as JSON."""
         _log_checkin("gallery_opened", config.dataset.checkin_log_file)
-        import json
-        import os
-
-        log_file = config.dataset.log_file
         max_items = config.web.gallery_max_items
-        entries: list[dict] = []
-
-        if os.path.exists(log_file):
-            with open(log_file, encoding="utf-8") as f:
-                lines = f.readlines()
-            for line in lines[-max_items:]:
-                line = line.strip()
-                if line:
-                    try:
-                        entries.append(json.loads(line))
-                    except json.JSONDecodeError:
-                        logger.warning("Skipping malformed log line: %s", line[:80])
-            entries = [e for e in entries if e.get("image_path")]
-            entries = list(reversed(entries))
-
+        entries = [entry for entry in read_log(config) if entry.get("image_path")]
+        entries = list(reversed(entries[-max_items:]))
         return jsonify(entries)
 
     # ------------------------------------------------------------------

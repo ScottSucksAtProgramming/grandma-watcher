@@ -60,7 +60,8 @@ def read_log(config: AppConfig) -> list[dict[str, Any]]:
     """Read log.jsonl rows under the shared flock."""
     log_path = Path(config.dataset.log_file)
     lock_path = Path(f"{config.dataset.log_file}.lock")
-    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    if not log_path.exists() and not lock_path.parent.exists():
+        return []
 
     with lock_path.open("a", encoding="utf-8") as lock_fd:
         fcntl.flock(lock_fd, fcntl.LOCK_SH)

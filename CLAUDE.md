@@ -22,6 +22,8 @@ vigil/
   security.py
   monitor.py
   healthchecks.py
+  archiver.py
+  nas_sync.py
   web_server.py
   alert.py
   sensors.py
@@ -46,6 +48,7 @@ vigil/
     test_monitor.py
     test_monitor_integration.py
     test_models.py
+    test_config.py
     test_protocols.py
     test_prompt_builder.py
     test_vlm_parser.py
@@ -56,6 +59,8 @@ vigil/
     test_probe.py
     test_security.py
     test_healthchecks.py
+    test_archiver.py
+    test_nas_sync.py
   setup/
     install.sh
     healthcheck_ping.sh
@@ -67,12 +72,17 @@ vigil/
       web_server.service
       go2rtc.service
       cloudflared.service
+      archiver.service
+      archiver.timer
+      nas_sync.service
+      nas_sync.timer
   templates/
     dashboard.html
   static/
     dashboard.js
     dashboard.css
     stream_paused.jpg
+    archived_placeholder.jpg
   dataset/
     images/
     log.jsonl
@@ -98,6 +108,7 @@ vigil/
         2026-04-10-dashboard-frontend-design.md
         2026-04-10-dashboard-html-design.md
         2026-04-11-healthchecks-integration-design.md
+        2026-04-12-dataset-encryption-archival-design.md
       plans/
         2026-04-08-config-loader.md
         2026-04-08-models-protocols.md
@@ -115,6 +126,7 @@ vigil/
         2026-04-10-dashboard-html.md
         2026-04-10-probe-tool.md
         2026-04-11-healthchecks-integration.md
+        2026-04-12-dataset-encryption-archival.md
   context/
     conventions.md
     dev-environment.md

@@ -46,13 +46,13 @@ grandma-watcher:
 		- Smoke test on Pi: kill switch toggles stream, access notifications fire via Pushover @done
 
 	Milestone 5 - Dataset Encryption and Archival (§19.2):
-		- Extend SecurityConfig in config.py with archival fields: archive_after_hours, age_public_key, nas_sync_enabled, nas_rsync_target; wire through load_config() @na
-		- Add image_archived field to DatasetEntry in models.py; add archive_dir field to DatasetConfig; add rewrite_log() + patch_log_entry(timestamp) helpers to dataset.py with flock-based concurrency safety; fix image_interval_minutes passthrough in _build_dataset; refactor /label route to use patch_log_entry @na
-		- Implement archiver.py encrypt-and-archive loop: read log.jsonl once to build label map, scan dataset/images/ for JPEGs older than archive_after_hours, skip unlabeled images, encrypt labeled eligible files with age, verify output non-zero, delete original, batch-rewrite log.jsonl via rewrite_log() @na
-		- Implement nas_sync.py gated on nas_sync_enabled: rsync dataset/archive/ to nas_rsync_target (--remove-source-files), rsync log.jsonl + checkins.jsonl (no delete) @na
-		- Create systemd units: archiver.service + archiver.timer (hourly) and nas_sync.service + nas_sync.timer (nightly at 03:00) in setup/systemd/ @na
-		- Wire archiver and nas_sync timers into setup/install.sh enable/start sequence @na
-		- Write tests/test_archiver.py and tests/test_nas_sync.py: unit tests covering skip-unlabeled logic, encrypt+verify+batch-rewrite, NAS sync gated on config flag @na
+		- Extend SecurityConfig in config.py with archival fields: archive_after_hours, age_public_key, nas_sync_enabled, nas_rsync_target; wire through load_config() @done
+		- Add image_archived field to DatasetEntry in models.py; add archive_dir field to DatasetConfig; add rewrite_log() + patch_log_entry(timestamp) helpers to dataset.py with flock-based concurrency safety; fix image_interval_minutes passthrough in _build_dataset; refactor /label route to use patch_log_entry @done
+		- Implement archiver.py encrypt-and-archive loop: read log.jsonl once to build label map, scan dataset/images/ for JPEGs older than archive_after_hours, skip unlabeled images, encrypt labeled eligible files with age, verify output non-zero, delete original, batch-rewrite log.jsonl via rewrite_log() @done
+		- Implement nas_sync.py gated on nas_sync_enabled: rsync dataset/archive/ to nas_rsync_target (--remove-source-files), rsync log.jsonl + checkins.jsonl (no delete) @done
+		- Create systemd units: archiver.service + archiver.timer (hourly) and nas_sync.service + nas_sync.timer (nightly at 03:00) in setup/systemd/ @done
+		- Wire archiver and nas_sync timers into setup/install.sh enable/start sequence @done
+		- Write tests/test_archiver.py and tests/test_nas_sync.py: unit tests covering skip-unlabeled logic, encrypt+verify+batch-rewrite, NAS sync gated on config flag @done
 
 	Backlog:
 		- Lower MJPEG stream quality for slow connections (StreamConfig: stream_width/height/fps → passed as go2rtc params; frame.jpeg for AI unaffected) @done
