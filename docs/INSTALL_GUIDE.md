@@ -262,6 +262,118 @@ bash setup/install.sh
 ssh pi@192.168.1.XXX
 ```
 
+## Dataset Encryption and NAS Sync Setup
+
+This section configures `age` encryption for archived frames and nightly rsync to TrueNAS.
+
+### 1. Generate an age key pair
+
+Run this on your **builder machine** (not the Pi):
+
+```bash
+age-keygen -o ~/vigil-key.txt
+```
+
+This writes a key file containing two lines:
+```
+# created: ...
+# public key: age1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+AGE-SECRET-KEY-1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+**Keep `~/vigil-key.txt` off the Pi.** Only the public key goes on the Pi.
+
+### 2. Copy the public key to config.yaml
+
+Copy the `public key:` line value (starts with `age1`) into `config.yaml` on the Pi:
+
+```yaml
+security:
+  age_public_key: "age1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```
+
+### 3. Create a `vigil-sync` user on TrueNAS
+
+In TrueNAS -> Credentials -> Local Users, create a user named `vigil-sync` with:
+- Shell: `/bin/sh`
+- Home directory: `/mnt/pool/vigil-archive` (or your chosen dataset path)
+- Appropriate dataset permissions (read/write on the archive dataset only)
+
+### 4. Generate an SSH key on the Pi
+
+```bash
+ssh-keygen -t ed25519 -N "" -f ~/.ssh/vigil_nas
+```
+
+### 5. Authorize the Pi's key on TrueNAS
+
+```bash
+ssh-copy-id -i ~/.ssh/vigil_nas.pub vigil-sync@<tailscale-ip>
+```
+
+Replace `<tailscale-ip>` with the TrueNAS Tailscale IP (visible in the Tailscale admin console).
+
+Test the connection:
+
+```bash
+ssh -i ~/.ssh/vigil_nas vigil-sync@<tailscale-ip> echo ok
+```
+
+Expected: `ok`
+
+### 5b. Add an SSH config entry
+
+This ensures rsync uses the correct key (the Pi may have multiple SSH keys; without this entry, rsync picks one arbitrarily):
+
+```bash
+cat >> ~/.ssh/config <<'EOF'
+
+Host vigil-nas
+    HostName <tailscale-ip>
+    User vigil-sync
+    IdentityFile ~/.ssh/vigil_nas
+EOF
+```
+
+Verify the alias works:
+
+```bash
+ssh vigil-nas echo ok
+```
+
+Expected: `ok`
+
+### 6. Configure NAS sync in config.yaml
+
+```yaml
+security:
+  nas_sync_enabled: true
+  nas_rsync_target: "vigil-nas:/mnt/pool/vigil-archive"
+```
+
+### 7. Test with a dry-run
+
+```bash
+rsync -avz --dry-run dataset/archive/ vigil-nas:/mnt/pool/vigil-archive/
+```
+
+Expected: rsync output showing files that would be transferred (no actual transfer).
+
+### 8. Verify timers are running
+
+```bash
+systemctl list-timers archiver.timer nas_sync.timer
+```
+
+Expected: both timers listed with next trigger times.
+
+### Security notes
+
+- The `age` public key in `config.yaml` can only encrypt, not decrypt. It is safe to store there.
+- A stolen Pi contains only encrypted `.age` blobs - unreadable without the private key at `~/vigil-key.txt`.
+- The Pi should be kept physically secured during the 24-hour active window when frames are still unencrypted.
+- All rsync traffic travels over the Tailscale encrypted tunnel - no additional firewall rules required.
+
 ### Permission denied (publickey)
 
 1. Verify the public key was pasted correctly in Imager

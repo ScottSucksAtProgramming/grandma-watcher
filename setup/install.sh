@@ -35,6 +35,29 @@ install_service() {
   echo "Installed and started ${name}.service"
 }
 
+# --- Helper: install a systemd timer (service + timer file) with path substitution ---
+install_timer() {
+  local name="$1"
+  local service_src="$SCRIPT_DIR/systemd/${name}.service"
+  local timer_src="$SCRIPT_DIR/systemd/${name}.timer"
+  local service_dest="/etc/systemd/system/${name}.service"
+  local timer_dest="/etc/systemd/system/${name}.timer"
+
+  sed \
+    -e "s|User=pi|User=${SERVICE_USER}|g" \
+    -e "s|Group=pi|Group=${SERVICE_USER}|g" \
+    -e "s|/home/pi/eldercare/.venv/bin/python|${VENV_PYTHON}|g" \
+    -e "s|/home/pi/eldercare|${PROJECT_DIR}|g" \
+    "$service_src" > "$service_dest"
+
+  cp "$timer_src" "$timer_dest"
+
+  systemctl daemon-reload
+  systemctl enable "${name}.timer"
+  systemctl start "${name}.timer"
+  echo "Installed and started ${name}.timer"
+}
+
 # --- Python venv ----------------------------------------------------------------
 if [ ! -f "$VENV_PYTHON" ]; then
   echo "Creating Python virtual environment..."
@@ -51,10 +74,18 @@ if [ ! -x /usr/local/bin/go2rtc ]; then
   chmod +x /usr/local/bin/go2rtc
 fi
 
+# --- age encryption tool --------------------------------------------------------
+if ! command -v age &>/dev/null; then
+  echo "Installing age encryption tool..."
+  sudo apt-get install -y age
+fi
+
 # --- systemd services -----------------------------------------------------------
 install_service go2rtc
 install_service web_server
 install_service monitor
+install_timer archiver
+install_timer nas_sync
 
 # --- Healthchecks.io OS-level cron heartbeat ------------------------------------
 SYSTEM_PING_URL=$(python3 -c "
