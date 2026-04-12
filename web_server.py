@@ -32,6 +32,7 @@ from flask import (
 
 from alert import PushoverChannel
 from config import AppConfig, load_config
+from dataset import patch_log_entry
 from models import Alert, AlertPriority, AlertType
 from security import AccessTracker, StreamPauseState
 
@@ -233,41 +234,10 @@ def create_app(config: AppConfig) -> Flask:
 
     @app.route("/label/<entry_id>", methods=["POST"])
     def label(entry_id: str) -> Response:
-        """Write a label to the matching log.jsonl entry."""
-        import json
-        import os
-
+        """Write a label to the matching log.jsonl entry via patch_log_entry."""
         body = request.get_json(silent=True) or {}
         label_value = body.get("label", "")
-
-        log_file = config.dataset.log_file
-        if not os.path.exists(log_file):
-            return jsonify({"error": "not found"}), 404
-
-        lines = []
-        matched = False
-        with open(log_file, encoding="utf-8") as f:
-            for raw_line in f:
-                raw_line = raw_line.strip()
-                if not raw_line:
-                    continue
-                try:
-                    entry = json.loads(raw_line)
-                except json.JSONDecodeError:
-                    lines.append(raw_line)
-                    continue
-                if entry.get("timestamp") == entry_id:
-                    entry["label"] = label_value
-                    matched = True
-                lines.append(json.dumps(entry))
-
-        if not matched:
-            return jsonify({"error": "not found"}), 404
-
-        with open(log_file, "w", encoding="utf-8") as f:
-            for line in lines:
-                f.write(line + "\n")
-
+        patch_log_entry(config, entry_id, {"label": label_value})
         return jsonify({"status": "ok", "id": entry_id})
 
     # ------------------------------------------------------------------

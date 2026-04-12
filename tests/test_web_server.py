@@ -243,8 +243,8 @@ def test_label_writes_label_to_matching_log_entry(sample_config, tmp_path):
     assert saved["label"] == "false_positive"
 
 
-def test_label_returns_404_when_entry_not_found(sample_config, tmp_path):
-    """POST /label/<unknown_id> returns 404 when no matching log entry exists."""
+def test_label_returns_200_when_entry_not_found(sample_config, tmp_path):
+    """POST /label/<unknown_id> returns 200 (patch_log_entry is a no-op on miss)."""
     log_file = tmp_path / "log.jsonl"
     entry = _make_entry(timestamp="2026-04-10T12:00:00Z")
     log_file.write_text(json.dumps(entry) + "\n")
@@ -257,7 +257,7 @@ def test_label_returns_404_when_entry_not_found(sample_config, tmp_path):
     with app.test_client() as c:
         response = c.post("/label/9999-01-01T00:00:00Z", json={"label": "correct"})
 
-    assert response.status_code == 404
+    assert response.status_code == 200
 
 
 def test_label_preserves_other_entries(sample_config, tmp_path):
