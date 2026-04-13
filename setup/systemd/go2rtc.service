@@ -1,5 +1,5 @@
 [Unit]
-Description=go2rtc - camera streaming for grandma-watcher
+Description=go2rtc - camera streaming for vigil
 Documentation=https://github.com/AlexxIT/go2rtc
 After=network-online.target
 Wants=network-online.target

@@ -1,5 +1,5 @@
 [Unit]
-Description=grandma-watcher AI safety assessment loop
+Description=vigil AI safety assessment loop
 After=network-online.target go2rtc.service
 Wants=network-online.target
 Requires=go2rtc.service
@@ -26,7 +26,7 @@ Environment=HOME=/home/pi
 # Logging to journald
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=grandma-monitor
+SyslogIdentifier=vigil-monitor
 
 [Install]
 WantedBy=multi-user.target

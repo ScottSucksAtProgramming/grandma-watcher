@@ -1,4 +1,4 @@
-# grandma-watcher configuration
+# vigil configuration
 # Copy this file to config.yaml and fill in your API keys before running.
 # config.yaml is gitignored - never commit real secrets.
 

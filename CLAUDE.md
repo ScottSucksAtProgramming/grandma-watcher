@@ -89,6 +89,7 @@ vigil/
   docs/
     MOM_GUIDE.md
     INSTALL_GUIDE.md
+    NAS_ARCHIVE_GUIDE.md
     SENSOR_SETUP.md
     token-usage-analysis.md
     images/
@@ -162,8 +163,8 @@ After completing a task, log any corrections, preferences, patterns, or discover
 ### Recent Lessons (last 5)
 
 <!-- Claude maintains this as a quick-reference mirror of the most recent entries from context/lessons.md. -->
-2026-04-12: All log.jsonl writers (append_log_entry, rewrite_log) and readers (read_log) must acquire fcntl.flock on a dedicated log.jsonl.lock sidecar — missing the lock on any writer allows silent data loss when the archiver's atomic rename races against an append.
-2026-04-12: Use read_log(config) in archiver.py rather than reading log.jsonl directly — the flock protocol must cover all readers too (LOCK_SH), not just writers, to prevent a rename racing a read mid-file.
+2026-04-13: rsync preserves source file permissions — log.jsonl on the Pi must be 644 so it arrives readable on the TrueNAS SMB share; 600 makes it unreadable to the SMB user.
+2026-04-13: TrueNAS SCALE manages SSH authorized_keys via its middleware database — ssh-copy-id is ignored; use the UI or `sudo -u <user> tee` to write the key.
+2026-04-13: Enabling an SMB share with ACLs on a TrueNAS dataset resets it to NFSv4 ACL mode — strip ACLs back to POSIX after adding the share, and remove Write from the "Other" entry so SSH StrictModes accepts the home dir.
+2026-04-13: When debugging rsync exit 11 from a Python subprocess, write a standalone debug script that prints stderr — capture_output=True hides the actual error message (e.g., a typo in nas_rsync_target).
 2026-04-12: werkzeug.security.safe_join must gate both the JPEG check and the .age check in the /images route — checking only one leg leaves a path traversal window for the other.
-2026-04-12: patch_log_entry always rewrites log.jsonl even on a miss — add a short-circuit before calling rewrite_log when the transform finds no matching row to avoid unnecessary SD card writes.
-2026-04-12: Two-phase rsync delete (sync all → confirm exit 0 → delete local files) is safer than --remove-source-files, which can leave a partial state on network interruption.

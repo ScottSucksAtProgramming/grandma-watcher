@@ -9,7 +9,11 @@ updated: 2026-04-07
 
 <!-- Append dated one-liners below. When 3+ related lessons accumulate on a topic, extract into a dedicated context file. -->
 
-2026-04-12: Shared JSONL readers need a missing-directory fast path before opening the `.lock` sidecar — for read-only routes like `/gallery`, return `[]` when the dataset directory is absent instead of trying to `mkdir` under `/home/pi`.
+2026-04-13: rsync preserves source file permissions — log.jsonl on the Pi should be 644 so it arrives readable on the TrueNAS SMB share; 600 makes it unreadable to the SMB user even though the .age files are fine.
+2026-04-13: TrueNAS SCALE manages SSH authorized_keys via its middleware database, not the filesystem — ssh-copy-id writes to disk but is ignored; the key must be added through the UI (Credentials → Local Users → Edit → Authorized Keys) or via `sudo -u <user> tee ~/.ssh/authorized_keys`.
+2026-04-13: Enabling an SMB share with ACLs on a TrueNAS dataset resets the dataset to NFSv4 ACL mode, which blocks chmod from the shell and breaks SSH StrictModes if the home dir becomes world-writable — strip ACLs back to POSIX after adding the share, and remove Write from the "Other" ACL entry.
+2026-04-13: When debugging rsync exit 11 from a Python subprocess, capture_output=True hides the actual error — write a standalone debug script that prints stdout/stderr to see the real rsync message (e.g., typo in nas_rsync_target path).
+2026-04-13: Shared JSONL readers need a missing-directory fast path before opening the `.lock` sidecar — for read-only routes like `/gallery`, return `[]` when the dataset directory is absent instead of trying to `mkdir` under `/home/pi`.
 
 2026-04-12: If a Flask route builds a notification channel inside `create_app()`, patch the imported constructor on the web module before calling `create_app()`; patching the instance method afterward misses the closure-scoped dependency.
 

@@ -1,4 +1,4 @@
-grandma-watcher:
+vigil:
 
 	Prep:
 		- Define domain types in models.py (AssessmentResult, Alert, SensorSnapshot) @done
