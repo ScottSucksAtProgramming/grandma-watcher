@@ -7,9 +7,15 @@ const STREAM_RECONNECT_BASE_MS = 3_000;
 const STREAM_RECONNECT_MAX_MS = 60_000;
 const STREAM_PERIODIC_MS = 5 * 60 * 1_000; // periodic stall safety net
 const STREAM_PAUSE_POLL_MS = 30_000;
+const TALK_WS_PORT = "1984";
 
 let _streamReconnectDelay = STREAM_RECONNECT_BASE_MS;
 let _streamReconnectTimer = null;
+let talkPeer = null;
+let talkSocket = null;
+let talkLocalStream = null;
+let talkLocalTrack = null;
+let talkEnding = false;
 
 function reloadStream() {
   const img = document.getElementById("stream-img");
@@ -71,10 +77,23 @@ function updateStreamPauseUI(data) {
   }
 }
 
+function updateCallBanner(isActive) {
+  const banner = document.getElementById("call-active-banner");
+  if (!banner) return;
+  if (isActive) {
+    banner.removeAttribute("hidden");
+    return;
+  }
+  banner.setAttribute("hidden", "");
+}
+
 function pollStreamStatus() {
   fetch("/stream/status")
     .then((r) => r.json())
-    .then(updateStreamPauseUI)
+    .then((data) => {
+      updateStreamPauseUI(data);
+      updateCallBanner(Boolean(data.call_active));
+    })
     .catch(() => {});
 }
 
@@ -328,6 +347,206 @@ function initModal() {
     });
 }
 
+// ── Two-way audio ──────────────────────────────────────────
+
+function setTalkStatus(message) {
+  const status = document.getElementById("talk-status");
+  if (status) status.textContent = message;
+}
+
+function setTalkWarning(message) {
+  const warning = document.getElementById("talk-warning");
+  if (!warning) return;
+  if (message) {
+    warning.textContent = message;
+    warning.removeAttribute("hidden");
+    return;
+  }
+  warning.textContent = "";
+  warning.setAttribute("hidden", "");
+}
+
+function setMuteButtonLabel() {
+  const btn = document.getElementById("talk-mute-btn");
+  if (!btn) return;
+  btn.textContent = talkLocalTrack && talkLocalTrack.enabled ? "Mute Mic" : "Unmute Mic";
+}
+
+function openTalkModal() {
+  const modal = document.getElementById("talk-modal");
+  const img = document.getElementById("talk-stream-img");
+  if (!modal || !img) return;
+  setTalkStatus("Calling…");
+  setTalkWarning("");
+  img.src = "/stream?" + Date.now();
+  modal.removeAttribute("hidden");
+  setMuteButtonLabel();
+}
+
+async function postTalkEnd() {
+  try {
+    await fetch("/talk/end", { method: "POST" });
+  } catch (_) {}
+}
+
+function closeTalkResources() {
+  if (talkSocket) {
+    talkSocket.close();
+    talkSocket = null;
+  }
+  if (talkPeer) {
+    talkPeer.close();
+    talkPeer = null;
+  }
+  if (talkLocalStream) {
+    talkLocalStream.getTracks().forEach((track) => track.stop());
+    talkLocalStream = null;
+  }
+  talkLocalTrack = null;
+  setMuteButtonLabel();
+}
+
+async function endTalkCall(options = {}) {
+  const { remote = false } = options;
+  if (talkEnding) return;
+  talkEnding = true;
+  closeTalkResources();
+  const modal = document.getElementById("talk-modal");
+  if (modal) modal.setAttribute("hidden", "");
+  if (!remote) {
+    await postTalkEnd();
+  }
+  pollStreamStatus();
+  talkEnding = false;
+}
+
+function buildTalkSocketUrl(rawTalkUrl, streamName) {
+  const url = new URL(rawTalkUrl, window.location.href);
+  const wsProtocol = url.protocol === "https:" ? "wss:" : "ws:";
+  return `${wsProtocol}//${url.hostname}:${TALK_WS_PORT}/api/ws?src=${encodeURIComponent(streamName)}`;
+}
+
+function handleTalkSocketMessage(event) {
+  let payload;
+  try {
+    payload = JSON.parse(event.data);
+  } catch (_) {
+    return;
+  }
+  if (!talkPeer) return;
+  if (payload.type === "answer" && payload.sdp) {
+    talkPeer.setRemoteDescription(payload).catch(() => {
+      setTalkStatus("Connection failed — try again");
+      endTalkCall();
+    });
+    return;
+  }
+  if (payload.type === "candidate" && payload.candidate) {
+    talkPeer.addIceCandidate(payload).catch(() => {});
+  }
+}
+
+async function startTalkCall() {
+  const btn = document.getElementById("talk-btn");
+  if (!btn || btn.disabled || !btn.dataset.talkUrl) return;
+  btn.disabled = true;
+  openTalkModal();
+
+  try {
+    const startResponse = await fetch("/talk/start", { method: "POST" });
+    const startData = await startResponse.json();
+    if (!startResponse.ok || !startData.ok) {
+      throw new Error("start failed");
+    }
+    if (!startData.chime_played) {
+      setTalkWarning("Speaker unavailable — call opening anyway");
+    }
+
+    try {
+      talkLocalStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (_) {
+      setTalkStatus("Mic permission denied — cannot start call");
+      await endTalkCall();
+      return;
+    }
+
+    talkLocalTrack = talkLocalStream.getAudioTracks()[0] || null;
+    setMuteButtonLabel();
+
+    talkPeer = new RTCPeerConnection();
+    talkLocalStream.getTracks().forEach((track) => talkPeer.addTrack(track, talkLocalStream));
+    talkPeer.addEventListener("connectionstatechange", () => {
+      if (!talkPeer) return;
+      if (talkPeer.connectionState === "connected") {
+        setTalkStatus("Connected ✓");
+        return;
+      }
+      if (["failed", "disconnected", "closed"].includes(talkPeer.connectionState)) {
+        setTalkStatus("Connection failed — try again");
+        endTalkCall();
+      }
+    });
+
+    talkSocket = new WebSocket(buildTalkSocketUrl(btn.dataset.talkUrl, btn.dataset.streamName || "grandma"));
+    talkSocket.addEventListener("open", async () => {
+      try {
+        const offer = await talkPeer.createOffer();
+        await talkPeer.setLocalDescription(offer);
+        talkSocket.send(JSON.stringify(talkPeer.localDescription));
+      } catch (_) {
+        setTalkStatus("Connection failed — try again");
+        endTalkCall();
+      }
+    });
+    talkSocket.addEventListener("message", handleTalkSocketMessage);
+    talkSocket.addEventListener("error", () => {
+      setTalkStatus("Cannot reach device — are you on Tailscale?");
+      endTalkCall();
+    });
+    talkSocket.addEventListener("close", () => {
+      if (!talkEnding && talkPeer && talkPeer.connectionState !== "connected") {
+        setTalkStatus("Cannot reach device — are you on Tailscale?");
+        endTalkCall();
+      }
+    });
+
+    talkPeer.addEventListener("icecandidate", (event) => {
+      if (event.candidate && talkSocket && talkSocket.readyState === WebSocket.OPEN) {
+        talkSocket.send(JSON.stringify(event.candidate));
+      }
+    });
+  } catch (_) {
+    setTalkStatus("Connection failed — try again");
+    await endTalkCall();
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function initTalk() {
+  const talkBtn = document.getElementById("talk-btn");
+  const muteBtn = document.getElementById("talk-mute-btn");
+  const endBtn = document.getElementById("talk-end-btn");
+  if (!talkBtn || !muteBtn || !endBtn) return;
+
+  talkBtn.addEventListener("click", startTalkCall);
+  muteBtn.addEventListener("click", () => {
+    if (!talkLocalTrack) return;
+    talkLocalTrack.enabled = !talkLocalTrack.enabled;
+    setMuteButtonLabel();
+  });
+  endBtn.addEventListener("click", () => {
+    setTalkStatus("Call ended");
+    endTalkCall();
+  });
+  window.addEventListener("beforeunload", () => {
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon("/talk/end", new Blob([], { type: "application/json" }));
+    }
+    closeTalkResources();
+  });
+}
+
 // ── Report missed alert ────────────────────────────────────
 
 function initReportMissed() {
@@ -356,5 +575,6 @@ document.addEventListener("DOMContentLoaded", () => {
   initSilence();
   initSilenceButton();
   initModal();
+  initTalk();
   initReportMissed();
 });

@@ -17,13 +17,14 @@
   </header>
 
   <div id="stream-paused-banner" hidden>Stream paused</div>
+  <div id="call-active-banner" hidden>📞 Call in progress</div>
   <img id="stream-img" src="/stream" alt="Live camera feed">
 
   <section id="controls">
     <button id="silence-btn" type="button">🔕 Silence 30 min</button>
     <button id="pause-stream-btn" type="button">Pause Stream</button>
     {% if talk_url %}
-      <a id="talk-btn" href="{{ talk_url }}" target="_blank" rel="noopener">🎙 Talk</a>
+      <button id="talk-btn" type="button" data-talk-url="{{ talk_url }}" data-stream-name="{{ stream_name }}">🎙 Talk</button>
     {% else %}
       <button id="talk-btn" class="btn btn--disabled" type="button" disabled
               title="Requires Tailscale — set talk_url in config.yaml">
@@ -53,6 +54,18 @@
   <section id="report-section">
     <button id="report-btn" type="button">⚠ Report Missed Alert</button>
   </section>
+
+  <div id="talk-modal" hidden>
+    <div id="talk-modal-sheet">
+      <p id="talk-status">Calling…</p>
+      <p id="talk-warning" hidden></p>
+      <img id="talk-stream-img" src="/stream" alt="Live camera feed during call">
+      <div id="talk-actions">
+        <button id="talk-mute-btn" type="button">Mute Mic</button>
+        <button id="talk-end-btn" type="button">End Call</button>
+      </div>
+    </div>
+  </div>
 
   <script src="/static/dashboard.js"></script>
 </body>

@@ -34,7 +34,7 @@ from alert import PushoverChannel
 from config import AppConfig, load_config
 from dataset import patch_log_entry, read_log
 from models import Alert, AlertPriority, AlertType
-from security import AccessTracker, StreamPauseState
+from security import AccessTracker, CallState, ChimeError, ChimePlayer, StreamPauseState
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +81,8 @@ def create_app(config: AppConfig) -> Flask:
         window_seconds=config.security.access_notification_window_minutes * 60,
         whitelist=config.security.access_notification_ip_whitelist,
     )
+    call_state = CallState(auto_expire_seconds=config.audio.call_auto_expire_minutes * 60)
+    chime_player = ChimePlayer(config.audio.chime_file)
     stream_pause = StreamPauseState(
         auto_resume_seconds=config.security.stream_pause_auto_resume_hours * 3600,
     )
@@ -110,7 +112,11 @@ def create_app(config: AppConfig) -> Flask:
         ip = _client_ip()
         if access_tracker.check_and_record(ip):
             _notify_builder(f"Dashboard opened from {ip}")
-        return render_template("dashboard.html", talk_url=config.web.talk_url)
+        return render_template(
+            "dashboard.html",
+            talk_url=config.web.talk_url,
+            stream_name=config.stream.stream_name,
+        )
 
     # ------------------------------------------------------------------
     # /stream — proxy go2rtc MJPEG
@@ -169,10 +175,30 @@ def create_app(config: AppConfig) -> Flask:
         paused_at = stream_pause.paused_at
         return jsonify(
             {
+                "call_active": call_state.is_active(),
                 "paused": stream_pause.is_paused,
                 "paused_since": paused_at.isoformat() if paused_at else None,
             }
         )
+
+    @app.route("/talk/start", methods=["POST"])
+    def talk_start_route() -> Response:
+        """Start a two-way audio call."""
+        chime_played = False
+        if config.audio.chime_before_talk:
+            try:
+                chime_player.play()
+                chime_played = True
+            except ChimeError:
+                pass
+        call_state.start()
+        return jsonify({"ok": True, "chime_played": chime_played})
+
+    @app.route("/talk/end", methods=["POST"])
+    def talk_end_route() -> Response:
+        """End a two-way audio call."""
+        call_state.end()
+        return jsonify({"ok": True})
 
     # ------------------------------------------------------------------
     # /gallery — recent log entries
