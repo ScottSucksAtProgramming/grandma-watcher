@@ -34,6 +34,7 @@ from nanogpt_provider import NanoGPTProvider
 from openrouter_provider import OpenRouterProvider
 from prompt_builder import build_prompt
 from protocols import AlertChannel, VLMProvider
+from security import CallState
 
 logger = logging.getLogger(__name__)
 
@@ -103,6 +104,7 @@ def run_cycle(
     location_state: PatientLocationStateMachine,
     fetch_frame: Callable[[AppConfig], bytes] = fetch_snapshot,
     save_image: bool = True,
+    call_state: CallState | None = None,
 ) -> bool:
     """Run one monitoring cycle. Returns True if a frame image was saved."""
     timestamp = _utc_now_iso()
@@ -140,14 +142,17 @@ def run_cycle(
 
     alert_fired = alert_type is not None
     if alert_type is not None:
-        alert_channel.send(
-            build_alert(
-                alert_type,
-                assessment,
-                dashboard_url=config.web.dashboard_url,
-                timestamp=timestamp,
+        if call_state is not None and call_state.is_active():
+            logger.info("alert suppressed: call active")
+        else:
+            alert_channel.send(
+                build_alert(
+                    alert_type,
+                    assessment,
+                    dashboard_url=config.web.dashboard_url,
+                    timestamp=timestamp,
+                )
             )
-        )
         if alert_type == AlertType.UNSAFE_MEDIUM:
             medium_cooldown.start()
         elif alert_type == AlertType.SOFT_LOW_CONFIDENCE:
@@ -185,6 +190,7 @@ def run_forever(
     builder_channel: AlertChannel | None = None,
     pinger: HealthchecksPinger | None = None,
     mom_channel: AlertChannel | None = None,
+    call_state: CallState | None = None,
 ) -> None:
     """Run the monitor loop indefinitely, keeping per-loop state in memory."""
     window_counter = SlidingWindowCounter(config.alerts.window_size)
@@ -216,6 +222,7 @@ def run_forever(
                 low_cooldown=low_cooldown,
                 location_state=location_state,
                 save_image=save_image,
+                call_state=call_state,
             )
             if image_saved:
                 last_image_saved_at = time.monotonic()
@@ -297,6 +304,7 @@ def main() -> int:
             emergency_retry_seconds=config.alerts.pushover_emergency_retry_seconds,
             emergency_expire_seconds=config.alerts.pushover_emergency_expire_seconds,
         )
+    call_state = CallState(auto_expire_seconds=config.audio.call_auto_expire_minutes * 60)
     run_forever(
         config,
         provider,
@@ -304,6 +312,7 @@ def main() -> int:
         builder_channel=builder_channel,
         pinger=pinger,
         mom_channel=mom_channel,
+        call_state=call_state,
     )
     return 0
 

@@ -16,6 +16,7 @@ from models import (
     Confidence,
     PatientLocation,
 )
+from security import CallState
 
 
 class _ProviderFake:
@@ -173,6 +174,74 @@ def test_run_cycle_high_unsafe_sends_immediate_alert_and_writes_dataset(
 
     payload = json.loads((tmp_path / "dataset" / "log.jsonl").read_text(encoding="utf-8"))
     assert payload["alert_fired"] is True
+
+
+def test_run_cycle_suppresses_alert_send_when_call_active(
+    sample_config, tmp_path, fixture_frame_bytes, caplog
+):
+    from monitor import run_cycle
+
+    config = _app_config(sample_config, tmp_path)
+    provider = _ProviderFake(
+        [
+            _assessment(
+                safe=False,
+                confidence=Confidence.HIGH,
+                reason="Patient appears stuck against the rail.",
+                patient_location=PatientLocation.IN_BED,
+            )
+        ]
+    )
+    channel = _AlertChannelFake()
+    state = _state(config)
+    call_state = CallState(auto_expire_seconds=60)
+    call_state.start()
+
+    with caplog.at_level(logging.INFO):
+        run_cycle(
+            config,
+            provider,
+            channel,
+            fetch_frame=lambda _config: fixture_frame_bytes,
+            call_state=call_state,
+            **state,
+        )
+
+    assert channel.alerts == []
+    assert any("alert suppressed: call active" in record.message for record in caplog.records)
+
+
+def test_run_cycle_sends_alert_after_call_state_ends(sample_config, tmp_path, fixture_frame_bytes):
+    from monitor import run_cycle
+
+    config = _app_config(sample_config, tmp_path)
+    provider = _ProviderFake(
+        [
+            _assessment(
+                safe=False,
+                confidence=Confidence.HIGH,
+                reason="Patient appears stuck against the rail.",
+                patient_location=PatientLocation.IN_BED,
+            )
+        ]
+    )
+    channel = _AlertChannelFake()
+    state = _state(config)
+    call_state = CallState(auto_expire_seconds=60)
+    call_state.start()
+    call_state.end()
+
+    run_cycle(
+        config,
+        provider,
+        channel,
+        fetch_frame=lambda _config: fixture_frame_bytes,
+        call_state=call_state,
+        **state,
+    )
+
+    assert len(channel.alerts) == 1
+    assert channel.alerts[0].alert_type == AlertType.UNSAFE_HIGH
 
 
 def test_run_cycle_medium_threshold_fires_on_second_cycle(
