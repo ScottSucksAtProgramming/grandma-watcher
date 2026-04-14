@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import requests as req
 
+from security import ChimeError
 from web_server import create_app
 
 # ---------------------------------------------------------------------------
@@ -97,6 +98,21 @@ def security_client(sample_config, tmp_path):
         app.config["TESTING"] = True
         with app.test_client() as c:
             yield c, mock_instance
+
+
+@pytest.fixture
+def talk_client(sample_config, tmp_path):
+    checkin_log_file = tmp_path / "checkins.jsonl"
+    patched_dataset = dataclasses.replace(
+        sample_config.dataset, checkin_log_file=str(checkin_log_file)
+    )
+    cfg = dataclasses.replace(sample_config, dataset=patched_dataset)
+    with patch("web_server.ChimePlayer") as MockChimePlayer:
+        mock_player = MockChimePlayer.return_value
+        app = create_app(cfg)
+        app.config["TESTING"] = True
+        with app.test_client() as c:
+            yield c, mock_player
 
 
 def test_gallery_route_returns_empty_list_initially(client):
@@ -527,7 +543,7 @@ def test_dashboard_route_returns_html_with_key_elements(client):
 
 
 def test_dashboard_talk_btn_renders_link_when_talk_url_set(sample_config):
-    """GET / renders talk-btn as an <a> link when talk_url is configured."""
+    """GET / renders a button-backed Talk trigger when talk_url is configured."""
     patched_web = dataclasses.replace(sample_config.web, talk_url="http://100.1.2.3:1984/")
     cfg = dataclasses.replace(sample_config, web=patched_web)
     app = create_app(cfg)
@@ -536,8 +552,32 @@ def test_dashboard_talk_btn_renders_link_when_talk_url_set(sample_config):
     with app.test_client() as c:
         response = c.get("/")
     body = response.data.decode()
-    assert 'href="http://100.1.2.3:1984/"' in body
+    assert 'id="talk-btn"' in body
+    assert 'data-talk-url="http://100.1.2.3:1984/"' in body
+    assert 'href="http://100.1.2.3:1984/"' not in body
     assert "disabled" not in body.split("talk-btn")[1].split("</")[0]
+
+
+def test_dashboard_renders_talk_modal_elements_when_talk_url_set(sample_config):
+    patched_web = dataclasses.replace(sample_config.web, talk_url="http://100.1.2.3:1984/")
+    cfg = dataclasses.replace(sample_config, web=patched_web)
+    app = create_app(cfg)
+    app.config["TESTING"] = True
+
+    with app.test_client() as c:
+        response = c.get("/")
+
+    body = response.data.decode()
+    for element_id in (
+        "call-active-banner",
+        "talk-modal",
+        "talk-status",
+        "talk-warning",
+        "talk-stream-img",
+        "talk-mute-btn",
+        "talk-end-btn",
+    ):
+        assert f'id="{element_id}"' in body
 
 
 # ---------------------------------------------------------------------------
@@ -583,7 +623,66 @@ def test_stream_status_returns_not_paused_initially(security_client):
     response = client.get("/stream/status")
 
     assert response.status_code == 200
-    assert response.get_json() == {"paused": False, "paused_since": None}
+    assert response.get_json() == {"call_active": False, "paused": False, "paused_since": None}
+
+
+def test_talk_start_returns_ok_and_chime_played_when_chime_succeeds(talk_client):
+    client, mock_player = talk_client
+
+    response = client.post("/talk/start")
+    status_response = client.get("/stream/status")
+
+    assert response.status_code == 200
+    assert response.get_json() == {"ok": True, "chime_played": True}
+    mock_player.play.assert_called_once_with()
+    assert status_response.get_json()["call_active"] is True
+
+
+def test_talk_start_returns_ok_when_chime_fails(talk_client):
+    client, mock_player = talk_client
+    mock_player.play.side_effect = ChimeError("speaker unavailable")
+
+    response = client.post("/talk/start")
+    status_response = client.get("/stream/status")
+
+    assert response.status_code == 200
+    assert response.get_json() == {"ok": True, "chime_played": False}
+    assert status_response.get_json()["call_active"] is True
+
+
+def test_talk_end_clears_call_active_state(talk_client):
+    client, _ = talk_client
+    client.post("/talk/start")
+
+    response = client.post("/talk/end")
+    status_response = client.get("/stream/status")
+
+    assert response.status_code == 200
+    assert response.get_json() == {"ok": True}
+    assert status_response.get_json()["call_active"] is False
+
+
+def test_stream_status_reports_call_active_transitions(talk_client):
+    client, _ = talk_client
+
+    initial_response = client.get("/stream/status")
+    client.post("/talk/start")
+    active_response = client.get("/stream/status")
+    client.post("/talk/end")
+    ended_response = client.get("/stream/status")
+
+    assert initial_response.get_json()["call_active"] is False
+    assert active_response.get_json()["call_active"] is True
+    assert ended_response.get_json()["call_active"] is False
+
+
+def test_talk_end_is_safe_when_no_call_is_active(talk_client):
+    client, _ = talk_client
+
+    response = client.post("/talk/end")
+
+    assert response.status_code == 200
+    assert response.get_json() == {"ok": True}
 
 
 def test_stream_pause_sets_paused_state(security_client):
@@ -606,7 +705,11 @@ def test_stream_resume_clears_paused_state(security_client):
 
     assert resume_response.status_code == 200
     assert resume_response.get_json() == {"status": "ok", "changed": True}
-    assert status_response.get_json() == {"paused": False, "paused_since": None}
+    assert status_response.get_json() == {
+        "call_active": False,
+        "paused": False,
+        "paused_since": None,
+    }
 
 
 def test_stream_pause_idempotent_returns_changed_false(security_client):
