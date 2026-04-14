@@ -259,6 +259,47 @@ def test_security_config_archival_fields_have_correct_defaults():
     assert cfg.nas_rsync_target == ""
 
 
+def test_audio_config_two_way_audio_fields_have_correct_defaults():
+    cfg = AudioConfig()
+
+    assert cfg.chime_before_talk is True
+    assert cfg.chime_file == "static/chime.wav"
+    assert cfg.alsa_mic_device == ""
+    assert cfg.alsa_speaker_device == ""
+    assert cfg.call_auto_expire_minutes == 60
+
+
+def test_load_config_reads_two_way_audio_fields(tmp_path):
+    cfg_path = tmp_path / "config.yaml"
+    cfg_path.write_text(
+        """
+api:
+  provider: nanogpt
+  model: "Qwen3 VL 235B A22B Instruct"
+  nanogpt_api_key: "test-key-nanogpt"
+monitor:
+  interval_seconds: 30
+alerts:
+  pushover_api_key: "test-key-app"
+  pushover_user_key: "test-key-user"
+audio:
+  chime_before_talk: true
+  chime_file: "static/chime.wav"
+  alsa_mic_device: "hw:1,0"
+  alsa_speaker_device: "plughw:1,0"
+  call_auto_expire_minutes: 90
+""",
+        encoding="utf-8",
+    )
+
+    config = load_config(str(cfg_path))
+
+    assert config.audio.chime_file == "static/chime.wav"
+    assert config.audio.alsa_mic_device == "hw:1,0"
+    assert config.audio.alsa_speaker_device == "plughw:1,0"
+    assert config.audio.call_auto_expire_minutes == 90
+
+
 def test_dataset_config_archive_dir_derived_from_base_dir(tmp_path):
     raw = {"dataset": {"base_dir": str(tmp_path / "ds")}}
 

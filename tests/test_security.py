@@ -1,8 +1,13 @@
 """Tests for security.py state objects."""
 
 import datetime
+import subprocess
+import threading
+from pathlib import Path
 
-from security import AccessTracker, StreamPauseState
+import pytest
+
+from security import AccessTracker, CallState, ChimeError, ChimePlayer, StreamPauseState
 
 
 def test_new_ip_triggers_notification():
@@ -167,3 +172,113 @@ def test_auto_resume_clears_paused_at():
     state.check_and_auto_resume()
 
     assert state.paused_at is None
+
+
+def test_call_state_is_inactive_before_start():
+    state = CallState(auto_expire_seconds=60)
+
+    assert state.is_active() is False
+
+
+def test_call_state_is_active_after_start():
+    fake_time = [100.0]
+    state = CallState(auto_expire_seconds=60, clock=lambda: fake_time[0])
+
+    state.start()
+
+    assert state.is_active() is True
+
+
+def test_call_state_is_inactive_after_end():
+    fake_time = [100.0]
+    state = CallState(auto_expire_seconds=60, clock=lambda: fake_time[0])
+    state.start()
+
+    state.end()
+
+    assert state.is_active() is False
+
+
+def test_call_state_auto_expires_after_timeout():
+    fake_time = [100.0]
+    state = CallState(auto_expire_seconds=60, clock=lambda: fake_time[0])
+    state.start()
+    fake_time[0] = 160.0
+
+    assert state.is_active() is False
+
+
+def test_call_state_remains_thread_safe_under_concurrent_start_end():
+    fake_time = [100.0]
+    state = CallState(auto_expire_seconds=60, clock=lambda: fake_time[0])
+    barrier = threading.Barrier(9)
+    errors: list[Exception] = []
+
+    def worker(action: str) -> None:
+        try:
+            barrier.wait()
+            for _ in range(200):
+                if action == "start":
+                    state.start()
+                else:
+                    state.end()
+                state.is_active()
+        except Exception as exc:  # pragma: no cover - failure path assertion below
+            errors.append(exc)
+
+    threads = [threading.Thread(target=worker, args=("start",)) for _ in range(4)] + [
+        threading.Thread(target=worker, args=("end",)) for _ in range(4)
+    ]
+
+    for thread in threads:
+        thread.start()
+
+    barrier.wait()
+
+    for thread in threads:
+        thread.join()
+
+    assert errors == []
+    assert isinstance(state.is_active(), bool)
+
+
+def test_chime_player_raises_when_file_is_missing(tmp_path):
+    missing_file = tmp_path / "missing.wav"
+
+    with pytest.raises(ChimeError, match="missing"):
+        ChimePlayer(missing_file)
+
+
+def test_chime_player_calls_aplay_with_expected_args(tmp_path):
+    chime_file = tmp_path / "chime.wav"
+    chime_file.write_bytes(b"RIFFtest")
+    calls: list[tuple[list[str], int]] = []
+
+    def fake_run(command: list[str], *, timeout: int) -> subprocess.CompletedProcess[str]:
+        calls.append((command, timeout))
+        return subprocess.CompletedProcess(command, 0)
+
+    player = ChimePlayer(chime_file, run_command=fake_run)
+
+    player.play()
+
+    assert calls == [(["aplay", str(chime_file)], 10)]
+
+
+def test_chime_player_raises_when_aplay_fails(tmp_path):
+    chime_file = tmp_path / "chime.wav"
+    chime_file.write_bytes(b"RIFFtest")
+
+    def fake_run(command: list[str], *, timeout: int) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(command, 1)
+
+    player = ChimePlayer(chime_file, run_command=fake_run)
+
+    with pytest.raises(ChimeError, match="aplay"):
+        player.play()
+
+
+def test_static_chime_wav_exists():
+    chime_path = Path(__file__).parent.parent / "static" / "chime.wav"
+
+    assert chime_path.exists()

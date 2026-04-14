@@ -6,9 +6,9 @@ import logging
 import re
 import shutil
 import subprocess
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Callable
 
 from config import AppConfig, load_config
 from dataset import read_log, rewrite_log
@@ -25,9 +25,7 @@ def _parse_filename_age_seconds(filename: str, now: datetime) -> float | None:
     if match is None:
         return None
     try:
-        captured_at = datetime.strptime(match.group(1), _TIMESTAMP_FMT).replace(
-            tzinfo=timezone.utc
-        )
+        captured_at = datetime.strptime(match.group(1), _TIMESTAMP_FMT).replace(tzinfo=UTC)
     except ValueError:
         return None
     return (now - captured_at).total_seconds()
@@ -56,7 +54,7 @@ def run_archive_cycle(config: AppConfig, *, _run: Callable = subprocess.run) -> 
     archive_dir = Path(config.dataset.archive_dir)
     archive_dir.mkdir(parents=True, exist_ok=True)
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     threshold_seconds = config.security.archive_after_hours * 3600
     archived_filenames: list[str] = []
 
@@ -82,7 +80,11 @@ def run_archive_cycle(config: AppConfig, *, _run: Callable = subprocess.run) -> 
             ],
             capture_output=True,
         )
-        if result.returncode != 0 or not encrypted_path.exists() or encrypted_path.stat().st_size == 0:
+        if (
+            result.returncode != 0
+            or not encrypted_path.exists()
+            or encrypted_path.stat().st_size == 0
+        ):
             logger.error(
                 "archiver: encryption failed for %s (returncode=%s)",
                 jpg_path.name,

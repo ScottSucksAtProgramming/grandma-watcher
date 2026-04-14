@@ -133,7 +133,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--prompt", help="Inline prompt (overrides --prompt-file and probe_prompt.md)"
     )
     parser.add_argument("--prompt-file", dest="prompt_file", help="Markdown file to use as prompt")
-    parser.add_argument("--provider", help="Override provider from config (nanogpt | openrouter | lmstudio)")
+    parser.add_argument(
+        "--provider", help="Override provider from config (nanogpt | openrouter | lmstudio)"
+    )
     parser.add_argument("--model", help="Override model from config")
     args = parser.parse_args(argv)
 

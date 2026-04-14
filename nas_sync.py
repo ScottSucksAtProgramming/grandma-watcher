@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import logging
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from config import AppConfig, load_config
 
@@ -47,7 +47,9 @@ def run_nas_sync(config: AppConfig, *, _run: Callable = subprocess.run) -> None:
             capture_output=True,
         )
         if result.returncode != 0:
-            logger.error("nas_sync: rsync failed for %s (exit %s)", log_path.name, result.returncode)
+            logger.error(
+                "nas_sync: rsync failed for %s (exit %s)", log_path.name, result.returncode
+            )
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@
 import dataclasses
 import json
 import subprocess
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -34,12 +34,12 @@ def _write_log(log_path: Path, entries: list[dict]) -> None:
 
 
 def _old_filename() -> str:
-    ts = datetime.now(tz=timezone.utc) - timedelta(hours=25)
+    ts = datetime.now(tz=UTC) - timedelta(hours=25)
     return ts.strftime("%Y-%m-%d_%H-%M-%S.jpg")
 
 
 def _recent_filename() -> str:
-    ts = datetime.now(tz=timezone.utc) - timedelta(hours=1)
+    ts = datetime.now(tz=UTC) - timedelta(hours=1)
     return ts.strftime("%Y-%m-%d_%H-%M-%S.jpg")
 
 
@@ -230,9 +230,7 @@ def test_archive_cycle_does_not_delete_original_when_age_file_missing(sample_con
     assert log["image_archived"] is False
 
 
-def test_archive_cycle_does_not_delete_original_when_age_file_zero_bytes(
-    sample_config, tmp_path
-):
+def test_archive_cycle_does_not_delete_original_when_age_file_zero_bytes(sample_config, tmp_path):
     from archiver import run_archive_cycle
 
     config = _make_config(sample_config, tmp_path)
@@ -309,9 +307,7 @@ def test_archive_cycle_batch_rewrites_log_once_for_multiple_files(sample_config,
     images_dir.mkdir(parents=True)
 
     filenames = [
-        (datetime.now(tz=timezone.utc) - timedelta(hours=25 + i)).strftime(
-            "%Y-%m-%d_%H-%M-%S.jpg"
-        )
+        (datetime.now(tz=UTC) - timedelta(hours=25 + i)).strftime("%Y-%m-%d_%H-%M-%S.jpg")
         for i in range(3)
     ]
     for filename in filenames:
