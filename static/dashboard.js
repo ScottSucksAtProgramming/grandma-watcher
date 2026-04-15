@@ -422,10 +422,12 @@ async function endTalkCall(options = {}) {
 
 function buildTalkSocketUrl(rawTalkUrl, streamName) {
   const url = new URL(rawTalkUrl, window.location.href);
-  // go2rtc API is always plain HTTP/WebSocket — use ws: even when the dashboard
-  // is served over HTTPS. Tailscale encrypts at the network layer, so no TLS
-  // is needed here. Always connect to go2rtc's API port (1984), not the Flask port.
-  return `ws://${url.hostname}:${TALK_WS_DEFAULT_PORT}/api/ws?src=${encodeURIComponent(streamName)}`;
+  // Mirror the protocol: https → wss (required to avoid Mixed Content blocks
+  // when the dashboard is served over HTTPS via Cloudflare).
+  // Port comes from talk_url (e.g. 1985 for go2rtc TLS); default 1984 for plain HTTP.
+  const wsProtocol = url.protocol === "https:" ? "wss:" : "ws:";
+  const port = url.port || TALK_WS_DEFAULT_PORT;
+  return `${wsProtocol}//${url.hostname}:${port}/api/ws?src=${encodeURIComponent(streamName)}`;
 }
 
 function handleTalkSocketMessage(event) {
